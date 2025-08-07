@@ -2,13 +2,14 @@ import { Request, Response } from "express";
 import { supabase } from "../services/superbase";
 
 export const signup = async (req: Request, res: Response) => {
-  const { email, password } = req.body;
+  const { email, password, name } = req.body;
 
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
       emailRedirectTo: "https://ai-prompt-test.netlify.app/auth/verify-email",
+      data: { name },
     },
   });
 
