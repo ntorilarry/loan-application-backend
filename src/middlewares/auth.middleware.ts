@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from "express";
 import { supabase } from "../services/superbase";
+import { AuthRequest } from "../models/auth.model";
 
 export const requireAuth = async (
-  req: Request,
+  req: AuthRequest,
   res: Response,
   next: NextFunction
 ) => {

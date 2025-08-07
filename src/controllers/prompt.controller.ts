@@ -1,7 +1,8 @@
-import { Request, Response } from "express";
+import { Response } from "express"; // ✅ import custom type
 import { supabase } from "../services/superbase";
+import { AuthRequest } from "../models/auth.model";
 
-export const createPrompt = async (req: Request, res: Response) => {
+export const createPrompt = async (req: AuthRequest, res: Response) => {
   const { title, content } = req.body;
   const user = req.user;
 
@@ -18,7 +19,7 @@ export const createPrompt = async (req: Request, res: Response) => {
   return res.status(201).json(data[0]);
 };
 
-export const getUserPrompts = async (req: Request, res: Response) => {
+export const getUserPrompts = async (req: AuthRequest, res: Response) => {
   const user = req.user;
 
   if (!user || !user.id) {
@@ -34,7 +35,7 @@ export const getUserPrompts = async (req: Request, res: Response) => {
   return res.json(data);
 };
 
-export const updatePrompt = async (req: Request, res: Response) => {
+export const updatePrompt = async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   const { title, content } = req.body;
 
@@ -48,7 +49,7 @@ export const updatePrompt = async (req: Request, res: Response) => {
   return res.json(data[0]);
 };
 
-export const deletePrompt = async (req: Request, res: Response) => {
+export const deletePrompt = async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
 
   const { error } = await supabase.from("prompts").delete().eq("id", id);
