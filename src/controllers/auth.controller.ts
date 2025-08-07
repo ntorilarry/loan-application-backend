@@ -4,12 +4,22 @@ import { supabase } from "../services/superbase";
 export const signup = async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: "/verify-email",
+    },
+  });
 
   if (error) return res.status(400).json({ error: error.message });
 
-  return res.status(200).json({ user: data.user });
+  return res.status(200).json({
+    message: "Signup successful. Please check your email to verify your account.",
+    user: data.user,
+  });
 };
+
 
 export const login = async (req: Request, res: Response) => {
   const { email, password } = req.body;
