@@ -7,8 +7,12 @@
   },
   "servers": [
     {
+      "url": "https://ai-prompt-backend.onrender.com/api",
+      "description": "Live server"
+    },
+    {
       "url": "http://localhost:5000/api",
-      "backendUrl": " https://ai-prompt-backend.onrender.com/api"
+      "description": "Development server"
     }
   ],
   "paths": {
