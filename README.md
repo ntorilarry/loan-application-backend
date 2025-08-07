@@ -20,7 +20,7 @@ Clone the repo:
 
 ```bash
 git clone https://github.com/ntorilarry/ai-prompt-backend.git
-cd blog-backend
+cd ai-prompt-backend
 ```
 
 Install the dependencies:
