@@ -8,7 +8,7 @@ export const signup = async (req: Request, res: Response) => {
     email,
     password,
     options: {
-      emailRedirectTo: "/verify-email",
+      emailRedirectTo: "https://ai-prompt-test.netlify.app/auth/verify-email",
     },
   });
 
@@ -38,7 +38,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
   const { email } = req.body;
 
   const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: "http://your-frontend.com/reset-password",
+    redirectTo: "https://ai-prompt-test.netlify.app/auth/reset-password",
   });
 
   if (error) return res.status(400).json({ error: error.message });
