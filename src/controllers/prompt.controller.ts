@@ -20,19 +20,53 @@ export const createPrompt = async (req: AuthRequest, res: Response) => {
 };
 
 export const getUserPrompts = async (req: AuthRequest, res: Response) => {
-  const user = req.user;
+  const {
+    page = 1,
+    size = 10,
+    search = "",
+    sortBy = "created_at",
+    sortOrder = "desc",
+    userId,
+  } = req.query as {
+    page?: string;
+    size?: string;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
+    userId?: string;
+  };
 
-  if (!user || !user.id) {
+  const limit = parseInt(String(size));
+  const offset = (parseInt(String(page)) - 1) * limit;
+
+  const requestingUser = req.user;
+  const filterUserId = userId || requestingUser?.id;
+
+  if (!filterUserId) {
     return res.status(401).json({ error: "Unauthorized: user not found" });
   }
 
-  const { data, error } = await supabase
+  const query = supabase
     .from("prompts")
-    .select("*")
-    .eq("user_id", user.id);
+    .select("*", { count: "exact" })
+    .ilike("title", `%${search}%`)
+    .eq("user_id", filterUserId)
+    .order(sortBy, { ascending: sortOrder === "asc" })
+    .range(offset, offset + limit - 1);
+
+  const { data, count, error } = await query;
 
   if (error) return res.status(400).json({ error: error.message });
-  return res.json(data);
+
+  return res.json({
+    data,
+    meta: {
+      total: count,
+      page: parseInt(String(page)),
+      size: limit,
+      totalPages: Math.ceil((count || 0) / limit),
+    },
+  });
 };
 
 export const updatePrompt = async (req: AuthRequest, res: Response) => {
