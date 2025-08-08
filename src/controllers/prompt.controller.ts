@@ -3,16 +3,23 @@ import { supabase } from "../services/superbase";
 import { AuthRequest } from "../models/auth.model";
 
 export const createPrompt = async (req: AuthRequest, res: Response) => {
-  const { title, content } = req.body;
-  const user = req.user;
+  const { title, content, userId } = req.body;
+  const requester = req.user;
 
-  if (!user || !user.id) {
+  if (!requester || !requester.id) {
     return res.status(401).json({ error: "Unauthorized: user not found" });
+  }
+  const targetUserId = userId || requester.id;
+
+  if (userId && userId !== requester.id && requester.role !== "admin") {
+    return res
+      .status(403)
+      .json({ error: "Forbidden: only admins can assign userId" });
   }
 
   const { data, error } = await supabase
     .from("prompts")
-    .insert([{ title, content, user_id: user.id }])
+    .insert([{ title, content, userId: targetUserId }])
     .select();
 
   if (error) return res.status(400).json({ error: error.message });
@@ -24,7 +31,7 @@ export const getUserPrompts = async (req: AuthRequest, res: Response) => {
     page = 1,
     size = 10,
     search = "",
-    sortBy = "created_at",
+    sortBy = "createdAt",
     sortOrder = "desc",
     userId,
   } = req.query as {
@@ -50,7 +57,7 @@ export const getUserPrompts = async (req: AuthRequest, res: Response) => {
     .from("prompts")
     .select("*", { count: "exact" })
     .ilike("title", `%${search}%`)
-    .eq("user_id", filterUserId)
+    .eq("userId", filterUserId)
     .order(sortBy, { ascending: sortOrder === "asc" })
     .range(offset, offset + limit - 1);
 

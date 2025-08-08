@@ -156,7 +156,7 @@
             "in": "query",
             "schema": {
               "type": "string",
-              "enum": ["created_at", "title"]
+              "enum": ["createdAt", "title"]
             },
             "description": "Field to sort by"
           },
@@ -221,9 +221,12 @@
                 "type": "object",
                 "properties": {
                   "title": { "type": "string" },
-                  "content": { "type": "string" }
+                  "content": { "type": "string" },
+                  "userId": {
+                    "type": "string"
+                  }
                 },
-                "required": ["title", "content"]
+                "required": ["title", "content", "userId"]
               }
             }
           }
@@ -300,6 +303,35 @@
       "bearerAuth": {
         "type": "http",
         "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "Prompt": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the prompt"
+          },
+          "title": {
+            "type": "string",
+            "description": "Title of the prompt"
+          },
+          "content": {
+            "type": "string",
+            "description": "Content or body of the prompt"
+          },
+          "userId": {
+            "type": "string",
+            "description": "ID of the user who created the prompt"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the prompt was created"
+          }
+        },
+        "required": ["id", "title", "content", "userId", "createdAt"]
       }
     }
   }

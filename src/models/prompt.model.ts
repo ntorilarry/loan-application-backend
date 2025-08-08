@@ -1,7 +1,7 @@
 export interface Prompt {
   id?: string;
-  user_id: string;
+  userId: string;
   title: string;
   content: string;
-  created_at?: string;
+  createdAt?: string;
 }
