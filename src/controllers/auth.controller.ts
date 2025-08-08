@@ -50,11 +50,17 @@ export const forgotPassword = async (req: Request, res: Response) => {
 export const resetPassword = async (req: Request, res: Response) => {
   const { accessToken, newPassword } = req.body;
 
-  const { data, error } = await supabase.auth.updateUser({
+  const { data: user, error: userError } = await supabase.auth.getUser(accessToken);
+
+  if (userError || !user?.user) {
+    return res.status(400).json({ error: "Invalid or expired token" });
+  }
+
+  const { error } = await supabase.auth.admin.updateUserById(user.user.id, {
     password: newPassword,
   });
 
   if (error) return res.status(400).json({ error: error.message });
 
-  return res.status(200).json({ message: "Password updated" });
+  return res.status(200).json({ message: "Password updated successfully" });
 };
