@@ -1,4 +1,4 @@
-import { Response } from "express"; // ✅ import custom type
+import { Response } from "express";
 import { supabase } from "../services/superbase";
 import { AuthRequest } from "../models/auth.model";
 

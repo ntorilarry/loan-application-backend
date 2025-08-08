@@ -110,10 +110,9 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "accessToken": { "type": "string" },
                   "newPassword": { "type": "string" }
                 },
-                "required": ["accessToken", "newPassword"]
+                "required": ["newPassword"]
               }
             }
           }

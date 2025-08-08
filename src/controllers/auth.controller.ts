@@ -38,7 +38,7 @@ export const login = async (req: Request, res: Response) => {
 export const forgotPassword = async (req: Request, res: Response) => {
   const { email } = req.body;
 
-  const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: "https://ai-prompt-test.netlify.app/auth/reset-password",
   });
 
@@ -48,9 +48,9 @@ export const forgotPassword = async (req: Request, res: Response) => {
 };
 
 export const resetPassword = async (req: Request, res: Response) => {
-  const { accessToken, newPassword } = req.body;
+  const { newPassword } = req.body;
 
-  const { data, error } = await supabase.auth.updateUser({
+  const { error } = await supabase.auth.updateUser({
     password: newPassword,
   });
 
