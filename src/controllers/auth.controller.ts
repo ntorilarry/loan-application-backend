@@ -8,7 +8,7 @@ export const signup = async (req: Request, res: Response) => {
     email,
     password,
     options: {
-      emailRedirectTo: "https://ai-prompt-test.netlify.app/auth/verify-email",
+      emailRedirectTo: "https://ai-prompt-test.netlify.app/auth/email-verified",
       data: { name },
     },
   });
