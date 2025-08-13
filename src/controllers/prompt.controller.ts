@@ -77,17 +77,26 @@ export const getUserPrompts = async (req: AuthRequest, res: Response) => {
 };
 
 export const updatePrompt = async (req: AuthRequest, res: Response) => {
-  const { id } = req.params;
-  const { title, content } = req.body;
+  try {
+    const { id } = req.params;
+    const { title, content } = req.body;
 
-  const { data, error } = await supabase
-    .from("prompts")
-    .update({ title, content })
-    .eq("id", id)
-    .select();
+    const { data, error } = await supabase
+      .from("prompts")
+      .update({ title, content })
+      .eq("id", id)
+      .select();
 
-  if (error) return res.status(400).json({ error: error.message });
-  return res.json(data[0]);
+    if (error) {
+      console.error("Supabase update error:", error);
+      return res.status(400).json({ error: error.message });
+    }
+
+    return res.json(data[0]);
+  } catch (err) {
+    console.error("Internal server error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
 };
 
 export const deletePrompt = async (req: AuthRequest, res: Response) => {
