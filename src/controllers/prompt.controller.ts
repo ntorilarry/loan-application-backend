@@ -81,9 +81,22 @@ export const updatePrompt = async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
     const { title, content } = req.body;
 
+    // Validate inputs
+    if (!id || typeof id !== "string") {
+      return res.status(400).json({ error: "Invalid prompt ID" });
+    }
+
+    if (!title && !content) {
+      return res.status(400).json({ error: "No fields to update" });
+    }
+
+    const updateData: any = { updatedAt: new Date().toISOString() };
+    if (title) updateData.title = title;
+    if (content) updateData.content = content;
+
     const { data, error } = await supabase
       .from("prompts")
-      .update({ title, content, updatedAt: new Date().toISOString() })
+      .update(updateData)
       .eq("id", id)
       .select();
 
@@ -92,10 +105,17 @@ export const updatePrompt = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: error.message });
     }
 
+    if (!data || data.length === 0) {
+      return res.status(404).json({ error: "Prompt not found" });
+    }
+
     return res.json(data[0]);
   } catch (err) {
     console.error("Internal server error:", err);
-    return res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({
+      error: "Internal server error",
+      details: err instanceof Error ? err.message : String(err),
+    });
   }
 };
 
