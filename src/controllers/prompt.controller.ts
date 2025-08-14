@@ -78,29 +78,25 @@ export const getUserPrompts = async (req: AuthRequest, res: Response) => {
 
 export const updatePrompt = async (req: AuthRequest, res: Response) => {
   try {
-    const { id } = req.params;
-    
-    // Validate request body exists
-    if (!req.body) {
-      return res.status(400).json({ error: "Request body is missing" });
+    // Check for body existence first
+    if (!req.body || Object.keys(req.body).length === 0) {
+      return res.status(400).json({ error: "Request body is required" });
     }
 
+    const { id } = req.params;
     const { title, content } = req.body;
 
-    // Validate at least one field is provided
+    // Validate at least one field exists
     if (title === undefined && content === undefined) {
-      return res.status(400).json({ error: "At least one field (title or content) must be provided" });
+      return res.status(400).json({ 
+        error: "Must provide at least one field to update (title or content)" 
+      });
     }
 
-    const updateData: {
-      title?: string;
-      content?: string;
-      updatedAt: string;
-    } = {
+    const updateData: Record<string, any> = {
       updatedAt: new Date().toISOString()
     };
 
-    // Only add fields that are provided
     if (title !== undefined) updateData.title = title;
     if (content !== undefined) updateData.content = content;
 
@@ -110,19 +106,13 @@ export const updatePrompt = async (req: AuthRequest, res: Response) => {
       .eq("id", id)
       .select();
 
-    if (error) {
-      console.error("Supabase update error:", error);
-      return res.status(400).json({ error: error.message });
-    }
-
-    if (!data || data.length === 0) {
-      return res.status(404).json({ error: "Prompt not found" });
-    }
+    if (error) throw error;
+    if (!data?.length) return res.status(404).json({ error: "Prompt not found" });
 
     return res.json(data[0]);
   } catch (err) {
-    console.error("Internal server error:", err);
-    return res.status(500).json({ 
+    console.error("Update error:", err);
+    return res.status(500).json({
       error: "Internal server error",
       details: err instanceof Error ? err.message : String(err)
     });
