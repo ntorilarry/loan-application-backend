@@ -11,13 +11,13 @@
     "typescript": "^5.9.2"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.53.1",
     "@types/cors": "^2.8.19",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
+    "firebase": "^12.1.0",
+    "firebase-admin": "^13.4.0",
     "helmet": "^8.1.0",
-    "supabase": "^2.33.9",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "uuid": "^11.1.0"

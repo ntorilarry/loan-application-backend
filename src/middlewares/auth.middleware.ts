@@ -1,6 +1,6 @@
-import { Request, Response, NextFunction } from "express";
-import { supabase } from "../services/superbase";
+import { Response, NextFunction } from "express";
 import { AuthRequest } from "../models/auth.model";
+import { adminAuth } from "../services/firebaseAdmin";
 
 export const requireAuth = async (
   req: AuthRequest,
@@ -8,14 +8,22 @@ export const requireAuth = async (
   next: NextFunction
 ) => {
   const token = req.headers.authorization?.replace("Bearer ", "");
-
   if (!token) return res.status(401).json({ error: "Unauthorized" });
 
-  const { data, error } = await supabase.auth.getUser(token);
-
-  if (error || !data.user)
-    return res.status(401).json({ error: "Invalid token" });
-
-  req.user = data.user;
-  next();
+  try {
+    const decoded = await adminAuth.verifyIdToken(token);
+    req.user = {
+      id: decoded.uid,
+      email: decoded.email,
+      app_metadata: {},
+      user_metadata: {},
+      created_at: decoded.auth_time
+        ? new Date(decoded.auth_time * 1000).toISOString()
+        : new Date().toISOString(),
+      ...decoded,
+    };
+    next();
+  } catch (error) {
+    res.status(401).json({ error: "Invalid token" });
+  }
 };

@@ -1,12 +1,11 @@
 import express from "express";
+import { requireAuth } from "../middlewares/auth.middleware";
 import {
   createPrompt,
+  deletePrompt,
   getUserPrompts,
   updatePrompt,
-  deletePrompt,
 } from "../controllers/prompt.controller";
-import { requireAuth } from "../middlewares/auth.middleware";
-
 const router = express.Router();
 
 router.use(requireAuth);

@@ -1,19 +1,20 @@
 import { Response } from "express";
-import { supabase } from "../services/superbase";
-import { AuthRequest } from "../models/auth.model";
 import { v4 as uuidv4 } from "uuid";
+import { AuthRequest } from "../models/auth.model";
+import { adminDb } from "../services/firebaseAdmin";
 
+// Create Prompt
 export const createPrompt = async (req: AuthRequest, res: Response) => {
   const { title, content, userId } = req.body;
   const requester = req.user;
 
-  if (!requester || !requester.id) {
+  if (!requester?.uid) {
     return res.status(401).json({ error: "Unauthorized: user not found" });
   }
 
-  const targetUserId = userId || requester.id;
+  const targetUserId = userId || requester.uid;
 
-  if (userId && userId !== requester.id && requester.role !== "admin") {
+  if (userId && userId !== requester.uid && requester.role !== "admin") {
     return res
       .status(403)
       .json({ error: "Forbidden: only admins can assign userId" });
@@ -21,23 +22,23 @@ export const createPrompt = async (req: AuthRequest, res: Response) => {
 
   const newId = uuidv4();
 
-  const { data, error } = await supabase
-    .from("prompts")
-    .insert([
-      {
-        id: newId,
-        title,
-        content,
-        userId: targetUserId,
-        updatedAt: null,
-      },
-    ])
-    .select();
+  try {
+    await adminDb.collection("prompts").doc(newId).set({
+      id: newId,
+      title,
+      content,
+      userId: targetUserId,
+      createdAt: new Date().toISOString(),
+      updatedAt: null,
+    });
 
-  if (error) return res.status(400).json({ error: error.message });
-  return res.status(201).json(data[0]);
+    res.status(201).json({ id: newId, title, content, userId: targetUserId });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
 };
 
+// Get User Prompts
 export const getUserPrompts = async (req: AuthRequest, res: Response) => {
   const {
     page = 1,
@@ -46,76 +47,79 @@ export const getUserPrompts = async (req: AuthRequest, res: Response) => {
     sortBy = "createdAt",
     sortOrder = "desc",
     userId,
-  } = req.query as {
-    page?: string;
-    size?: string;
-    search?: string;
-    sortBy?: string;
-    sortOrder?: "asc" | "desc";
-    userId?: string;
-  };
-
-  const limit = parseInt(String(size));
-  const offset = (parseInt(String(page)) - 1) * limit;
+  } = req.query as any;
 
   const requestingUser = req.user;
-  const filterUserId = userId || requestingUser?.id;
+  const filterUserId = userId || requestingUser?.uid;
 
   if (!filterUserId) {
     return res.status(401).json({ error: "Unauthorized: user not found" });
   }
 
-  const query = supabase
-    .from("prompts")
-    .select("*", { count: "exact" })
-    .ilike("title", `%${search}%`)
-    .eq("userId", filterUserId)
-    .order(sortBy, { ascending: sortOrder === "asc" })
-    .range(offset, offset + limit - 1);
-
-  const { data, count, error } = await query;
-
-  if (error) return res.status(400).json({ error: error.message });
-
-  return res.json({
-    data,
-    meta: {
-      total: count,
-      page: parseInt(String(page)),
-      size: limit,
-      totalPages: Math.ceil((count || 0) / limit),
-    },
-  });
-};
-
-export const updatePrompt = async (req: AuthRequest, res: Response) => {
   try {
-    const { id } = req.params;
-    const { title, content } = req.body;
+    let queryRef = adminDb
+      .collection("prompts")
+      .where("userId", "==", filterUserId);
 
-    const { data, error } = await supabase
-      .from("prompts")
-      .update({ title, content, updatedAt: new Date().toISOString() })
-      .eq("id", id)
-      .select();
-
-    if (error) {
-      console.error("Supabase update error:", error);
-      return res.status(400).json({ error: error.message });
+    if (search) {
+      // Firestore doesn't have ILIKE; you'd store lowercase titles for search
+      queryRef = queryRef
+        .where("title", ">=", search)
+        .where("title", "<=", search + "\uf8ff");
     }
 
-    return res.json(data[0]);
-  } catch (err) {
-    console.error("Internal server error:", err);
-    return res.status(500).json({ error: "Internal server error" });
+    const snapshot = await queryRef.get();
+
+    const allData = snapshot.docs.map((doc) => doc.data());
+    // Manual sorting + pagination
+    const sorted = allData.sort((a: any, b: any) =>
+      sortOrder === "asc"
+        ? a[sortBy]?.localeCompare(b[sortBy])
+        : b[sortBy]?.localeCompare(a[sortBy])
+    );
+
+    const start = (Number(page) - 1) * Number(size);
+    const paginated = sorted.slice(start, start + Number(size));
+
+    res.json({
+      data: paginated,
+      meta: {
+        total: allData.length,
+        page: Number(page),
+        size: Number(size),
+        totalPages: Math.ceil(allData.length / Number(size)),
+      },
+    });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
   }
 };
 
+// Update Prompt
+export const updatePrompt = async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  const { title, content } = req.body;
+
+  try {
+    await adminDb.collection("prompts").doc(id).update({
+      title,
+      content,
+      updatedAt: new Date().toISOString(),
+    });
+    res.json({ message: "Updated successfully" });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+// Delete Prompt
 export const deletePrompt = async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
 
-  const { error } = await supabase.from("prompts").delete().eq("id", id);
-
-  if (error) return res.status(400).json({ error: error.message });
-  return res.status(204).send();
+  try {
+    await adminDb.collection("prompts").doc(id).delete();
+    res.status(204).send();
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
 };
