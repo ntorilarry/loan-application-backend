@@ -5,12 +5,12 @@ import { getFirestore } from "firebase/firestore";
 
 // Firebase config (use your real values from Firebase Console)
 const firebaseConfig = {
-  apiKey: "AIzaSyBmbB24nU2P5_-tySDRWAxquyDxSyBk8w4",
-  authDomain: "ai-prompt-23894.firebaseapp.com",
-  projectId: "ai-prompt-23894",
-  storageBucket: "ai-prompt-23894.firebasestorage.app",
-  messagingSenderId: "980476418048",
-  appId: "1:980476418048:web:51ec1ec20b1478b8a820e5"
+  apiKey: process.env.API_KEY,
+  authDomain: process.env.AUTH_DOMAIN,
+  projectId: process.env.PROJECT_ID,
+  storageBucket: process.env.STORAGE_BUCKET,
+  messagingSenderId: process.env.MESSAGING_SENDER_ID,
+  appId: process.env.APP_ID,
 };
 
 // Initialize Firebase App
