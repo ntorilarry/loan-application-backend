@@ -11,7 +11,7 @@ The project is done in:
 - Node.js
 - Express.js
 - Typescript
-- Supabase
+- firebase
 - JWT
 
 ## Manual Installation

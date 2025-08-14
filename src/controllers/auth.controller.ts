@@ -1,6 +1,10 @@
 import { Request, Response } from "express";
 import { adminAuth, adminDb } from "../services/firebaseAdmin";
-import { signInWithEmailAndPassword, confirmPasswordReset } from "firebase/auth";
+import {
+  signInWithEmailAndPassword,
+  confirmPasswordReset,
+  ActionCodeSettings,
+} from "firebase/auth";
 import { auth } from "../services/firebase";
 
 /**
@@ -11,7 +15,9 @@ export const signup = async (req: Request, res: Response) => {
     const { email, password, name } = req.body;
 
     if (!email || !password || !name) {
-      return res.status(400).json({ error: "Email, password, and name are required" });
+      return res
+        .status(400)
+        .json({ error: "Email, password, and name are required" });
     }
 
     // Create user in Firebase Auth (Admin SDK)
@@ -21,7 +27,7 @@ export const signup = async (req: Request, res: Response) => {
       displayName: name,
     });
 
-    // Save user in Firestore
+    // Save in Firestore
     await adminDb.collection("users").doc(userRecord.uid).set({
       uid: userRecord.uid,
       email,
@@ -31,8 +37,23 @@ export const signup = async (req: Request, res: Response) => {
       updatedAt: null,
     });
 
+    // Generate email verification link with custom URL
+    const actionCodeSettings: ActionCodeSettings = {
+      url: `https://ai-prompt-test.netlify.app/auth/email-verified`,
+      handleCodeInApp: true,
+    };
+
+    const link = await adminAuth.generateEmailVerificationLink(
+      email,
+      actionCodeSettings
+    );
+
+    // In production — send `link` via your email service
+    console.log("Custom email verification link:", link);
+
     res.status(201).json({
       message: "Signup successful. Please verify your email.",
+      link, // remove in production
       user: {
         uid: userRecord.uid,
         email,
@@ -56,7 +77,11 @@ export const login = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Email and password are required" });
     }
 
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const userCredential = await signInWithEmailAndPassword(
+      auth,
+      email,
+      password
+    );
     const user = userCredential.user;
 
     const token = await user.getIdToken();
@@ -86,12 +111,21 @@ export const forgotPassword = async (req: Request, res: Response) => {
   }
 
   try {
-    const link = await adminAuth.generatePasswordResetLink(email);
-    // In production: Send `link` via email with Nodemailer, SendGrid, etc.
+    const actionCodeSettings = {
+      url: `https://ai-prompt-test.netlify.app/auth/reset-password`,
+      handleCodeInApp: true,
+    };
+
+    const link = await adminAuth.generatePasswordResetLink(
+      email,
+      actionCodeSettings
+    );
+
+    console.log("Custom password reset link:", link);
 
     res.status(200).json({
       message: "Password reset link generated",
-      link, // Only include for testing — remove in production
+      link, // remove in production
     });
   } catch (error: any) {
     res.status(400).json({ error: error.message });
@@ -105,7 +139,9 @@ export const resetPassword = async (req: Request, res: Response) => {
   const { oobCode, newPassword } = req.body;
 
   if (!oobCode || !newPassword) {
-    return res.status(400).json({ error: "Reset code and new password are required" });
+    return res
+      .status(400)
+      .json({ error: "Reset code and new password are required" });
   }
 
   try {
