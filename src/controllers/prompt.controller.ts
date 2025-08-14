@@ -78,44 +78,24 @@ export const getUserPrompts = async (req: AuthRequest, res: Response) => {
 
 export const updatePrompt = async (req: AuthRequest, res: Response) => {
   try {
-    // Check for body existence first
-    if (!req.body || Object.keys(req.body).length === 0) {
-      return res.status(400).json({ error: "Request body is required" });
-    }
-
     const { id } = req.params;
     const { title, content } = req.body;
 
-    // Validate at least one field exists
-    if (title === undefined && content === undefined) {
-      return res.status(400).json({ 
-        error: "Must provide at least one field to update (title or content)" 
-      });
-    }
-
-    const updateData: Record<string, any> = {
-      updatedAt: new Date().toISOString()
-    };
-
-    if (title !== undefined) updateData.title = title;
-    if (content !== undefined) updateData.content = content;
-
     const { data, error } = await supabase
       .from("prompts")
-      .update(updateData)
+      .update({ title, content, updatedAt: new Date().toISOString() })
       .eq("id", id)
       .select();
 
-    if (error) throw error;
-    if (!data?.length) return res.status(404).json({ error: "Prompt not found" });
+    if (error) {
+      console.error("Supabase update error:", error);
+      return res.status(400).json({ error: error.message });
+    }
 
     return res.json(data[0]);
   } catch (err) {
-    console.error("Update error:", err);
-    return res.status(500).json({
-      error: "Internal server error",
-      details: err instanceof Error ? err.message : String(err)
-    });
+    console.error("Internal server error:", err);
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
 
