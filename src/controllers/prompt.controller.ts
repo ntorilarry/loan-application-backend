@@ -79,20 +79,30 @@ export const getUserPrompts = async (req: AuthRequest, res: Response) => {
 export const updatePrompt = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
+    
+    // Validate request body exists
+    if (!req.body) {
+      return res.status(400).json({ error: "Request body is missing" });
+    }
+
     const { title, content } = req.body;
 
-    // Validate inputs
-    if (!id || typeof id !== "string") {
-      return res.status(400).json({ error: "Invalid prompt ID" });
+    // Validate at least one field is provided
+    if (title === undefined && content === undefined) {
+      return res.status(400).json({ error: "At least one field (title or content) must be provided" });
     }
 
-    if (!title && !content) {
-      return res.status(400).json({ error: "No fields to update" });
-    }
+    const updateData: {
+      title?: string;
+      content?: string;
+      updatedAt: string;
+    } = {
+      updatedAt: new Date().toISOString()
+    };
 
-    const updateData: any = { updatedAt: new Date().toISOString() };
-    if (title) updateData.title = title;
-    if (content) updateData.content = content;
+    // Only add fields that are provided
+    if (title !== undefined) updateData.title = title;
+    if (content !== undefined) updateData.content = content;
 
     const { data, error } = await supabase
       .from("prompts")
@@ -112,9 +122,9 @@ export const updatePrompt = async (req: AuthRequest, res: Response) => {
     return res.json(data[0]);
   } catch (err) {
     console.error("Internal server error:", err);
-    return res.status(500).json({
+    return res.status(500).json({ 
       error: "Internal server error",
-      details: err instanceof Error ? err.message : String(err),
+      details: err instanceof Error ? err.message : String(err)
     });
   }
 };
