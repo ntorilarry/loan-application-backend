@@ -1,6 +1,7 @@
 import { Response } from "express";
 import { supabase } from "../services/superbase";
 import { AuthRequest } from "../models/auth.model";
+import { validate as isUuid } from "uuid";
 
 export const createPrompt = async (req: AuthRequest, res: Response) => {
   const { title, content, userId } = req.body;
@@ -81,6 +82,10 @@ export const updatePrompt = async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
     const { title, content } = req.body;
 
+    if (!isUuid(id)) {
+      return res.status(400).json({ error: "Invalid ID format" });
+    }
+
     const { data, error } = await supabase
       .from("prompts")
       .update({ title, content })
@@ -90,6 +95,10 @@ export const updatePrompt = async (req: AuthRequest, res: Response) => {
     if (error) {
       console.error("Supabase update error:", error);
       return res.status(400).json({ error: error.message });
+    }
+
+    if (!data || data.length === 0) {
+      return res.status(404).json({ error: "Prompt not found" });
     }
 
     return res.json(data[0]);

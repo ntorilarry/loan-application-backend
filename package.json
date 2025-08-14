@@ -19,6 +19,7 @@
     "helmet": "^8.1.0",
     "supabase": "^2.33.9",
     "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^5.0.1"
+    "swagger-ui-express": "^5.0.1",
+    "uuid": "^11.1.0"
   }
 }
