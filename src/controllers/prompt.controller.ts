@@ -1,6 +1,7 @@
 import { Response } from "express";
 import { supabase } from "../services/superbase";
 import { AuthRequest } from "../models/auth.model";
+import { v4 as uuidv4 } from "uuid";
 
 export const createPrompt = async (req: AuthRequest, res: Response) => {
   const { title, content, userId } = req.body;
@@ -9,6 +10,7 @@ export const createPrompt = async (req: AuthRequest, res: Response) => {
   if (!requester || !requester.id) {
     return res.status(401).json({ error: "Unauthorized: user not found" });
   }
+
   const targetUserId = userId || requester.id;
 
   if (userId && userId !== requester.id && requester.role !== "admin") {
@@ -17,9 +19,19 @@ export const createPrompt = async (req: AuthRequest, res: Response) => {
       .json({ error: "Forbidden: only admins can assign userId" });
   }
 
+  const newId = uuidv4();
+
   const { data, error } = await supabase
     .from("prompts")
-    .insert([{ title, content, userId: targetUserId }])
+    .insert([
+      {
+        id: newId,
+        title,
+        content,
+        userId: targetUserId,
+        updatedAt: null,
+      },
+    ])
     .select();
 
   if (error) return res.status(400).json({ error: error.message });
