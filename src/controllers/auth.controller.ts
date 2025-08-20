@@ -32,7 +32,7 @@ export const signup = async (req: Request, res: Response) => {
       verificationToken,
     });
 
-    const verifyLink = `${process.env.CLIENT_URL}/verify-email?token=${verificationToken}`;
+    const verifyLink = `${process.env.CLIENT_URL}/email-verified?token=${verificationToken}`;
     await sendEmail(
       user.email,
       "Verify your email",
