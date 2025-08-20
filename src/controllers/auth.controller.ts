@@ -16,28 +16,23 @@ export const signup = async (req: Request, res: Response) => {
   try {
     const { email, password, confirmPassword, name } = req.body;
 
-    // Check required fields
     if (!email || !password || !confirmPassword || !name) {
       return res.status(400).json({
         error: "Email, password, confirmPassword, and name are required",
       });
     }
 
-    // Ensure passwords match
     if (password !== confirmPassword) {
       return res.status(400).json({ error: "Passwords do not match" });
     }
 
-    // Check if email already exists
     const existingUser = await User.findOne({ email });
     if (existingUser)
       return res.status(400).json({ error: "Email already in use" });
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
     const verificationToken = crypto.randomBytes(32).toString("hex");
 
-    // Create user
     const user = await User.create({
       email,
       name,
@@ -46,7 +41,6 @@ export const signup = async (req: Request, res: Response) => {
       verificationToken,
     });
 
-    // Send verification email
     const verifyLink = `${process.env.CLIENT_URL}/auth/email-verified?token=${verificationToken}`;
     await sendEmail(
       user.email,
@@ -75,7 +69,6 @@ export const login = async (req: Request, res: Response) => {
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ error: "Invalid credentials" });
 
-    // Check if email is verified
     if (!user.isVerified) {
       return res.status(400).json({ error: "Please verify your email first" });
     }
@@ -83,25 +76,20 @@ export const login = async (req: Request, res: Response) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ error: "Invalid credentials" });
 
-    // Generate access token
     const accessToken = jwt.sign(
       { id: user._id, role: user.role },
       JWT_SECRET,
       { expiresIn: "15m" }
     );
 
-    // Generate refresh token
     const refreshToken = jwt.sign({ id: user._id }, JWT_REFRESH_SECRET, {
       expiresIn: "7d",
     });
 
-    // Store refresh token (in production, store in database with user association)
     refreshTokens.push(refreshToken);
 
-    // Set refresh token as HTTP-only cookie
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
@@ -130,12 +118,10 @@ export const refreshToken = async (req: Request, res: Response) => {
       return res.status(401).json({ error: "Refresh token required" });
     }
 
-    // Check if refresh token exists in storage
     if (!refreshTokens.includes(refreshToken)) {
       return res.status(403).json({ error: "Invalid refresh token" });
     }
 
-    // Verify refresh token
     const decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET) as any;
 
     const user = await User.findById(decoded.id);
@@ -143,7 +129,6 @@ export const refreshToken = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    // Generate new access token
     const newAccessToken = jwt.sign(
       { id: user._id, role: user.role },
       JWT_SECRET,
@@ -167,14 +152,10 @@ export const refreshToken = async (req: Request, res: Response) => {
 export const logout = async (req: Request, res: Response) => {
   try {
     const refreshToken = req.cookies.refreshToken;
-
-    // Remove refresh token from storage
     refreshTokens = refreshTokens.filter((token) => token !== refreshToken);
 
-    // Clear the refresh token cookie
     res.clearCookie("refreshToken", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
     });
 
@@ -212,7 +193,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
 
     const resetToken = crypto.randomBytes(32).toString("hex");
     user.resetPasswordToken = resetToken;
-    user.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000); // 1h expiry
+    user.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000);
     await user.save();
 
     const resetLink = `${process.env.CLIENT_URL}/auth/reset-password?token=${resetToken}`;
