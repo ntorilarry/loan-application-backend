@@ -28,9 +28,10 @@
                 "properties": {
                   "name": { "type": "string" },
                   "email": { "type": "string" },
-                  "password": { "type": "string" }
+                  "password": { "type": "string" },
+                  "confirmPassword": { "type": "string" }
                 },
-                "required": ["name", "email", "password"]
+                "required": ["name", "email", "password", "confirmPassword"]
               }
             }
           }
@@ -61,10 +62,76 @@
         },
         "responses": {
           "200": {
-            "description": "User logged in successfully with JWT token"
+            "description": "User logged in successfully with JWT token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "accessToken": { "type": "string" },
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "id": { "type": "string" },
+                        "email": { "type": "string" },
+                        "name": { "type": "string" },
+                        "role": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           },
           "400": {
             "description": "Invalid credentials or email not verified"
+          }
+        }
+      }
+    },
+    "/auth/refresh-token": {
+      "post": {
+        "summary": "Refresh access token using refresh token cookie",
+        "responses": {
+          "200": {
+            "description": "New access token generated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "accessToken": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Refresh token not provided"
+          },
+          "403": {
+            "description": "Invalid or expired refresh token"
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "summary": "Logout user and invalidate refresh token",
+        "responses": {
+          "200": {
+            "description": "Logout successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -267,7 +334,12 @@
   },
   "components": {
     "securitySchemes": {
-      "bearerAuth": { "type": "http", "scheme": "bearer" }
+      "bearerAuth": { 
+        "type": "http", 
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT Access Token for authentication"
+      }
     },
     "schemas": {
       "Prompt": {
@@ -288,6 +360,14 @@
             "description": "Updated timestamp"
           }
         }
+      }
+    },
+    "responses": {
+      "UnauthorizedError": {
+        "description": "Access token is missing or invalid"
+      },
+      "ForbiddenError": {
+        "description": "Not enough permissions to access the resource"
       }
     }
   }
