@@ -1,15 +1,12 @@
 import { Request, Response } from "express";
-import { adminAuth, adminDb } from "../services/firebaseAdmin";
-import {
-  signInWithEmailAndPassword,
-  confirmPasswordReset,
-  ActionCodeSettings,
-} from "firebase/auth";
-import { auth } from "../services/firebase";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import User from "../models/user.model";
+import crypto from "crypto";
+import { sendEmail } from "../utils/sendEmail";
 
-/**
- * Signup a new user
- */
+const JWT_SECRET = process.env.JWT_SECRET || "changeme";
+
 export const signup = async (req: Request, res: Response) => {
   try {
     const { email, password, name } = req.body;
@@ -20,134 +17,136 @@ export const signup = async (req: Request, res: Response) => {
         .json({ error: "Email, password, and name are required" });
     }
 
-    // Create user in Firebase Auth (Admin SDK)
-    const userRecord = await adminAuth.createUser({
-      email,
-      password,
-      displayName: name,
-    });
+    const existingUser = await User.findOne({ email });
+    if (existingUser)
+      return res.status(400).json({ error: "Email already in use" });
 
-    // Save in Firestore
-    await adminDb.collection("users").doc(userRecord.uid).set({
-      uid: userRecord.uid,
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const verificationToken = crypto.randomBytes(32).toString("hex");
+
+    const user = await User.create({
       email,
       name,
+      password: hashedPassword,
       role: "user",
-      createdAt: new Date().toISOString(),
-      updatedAt: null,
+      verificationToken,
     });
 
-    // Generate email verification link with custom URL
-    const actionCodeSettings: ActionCodeSettings = {
-      url: `https://ai-prompt-test.netlify.app/auth/email-verified`,
-      handleCodeInApp: true,
-    };
-
-    const link = await adminAuth.generateEmailVerificationLink(
-      email,
-      actionCodeSettings
+    const verifyLink = `${process.env.CLIENT_URL}/verify-email?token=${verificationToken}`;
+    await sendEmail(
+      user.email,
+      "Verify your email",
+      `<p>Hello ${user.name},</p>
+       <p>Please verify your email by clicking below:</p>
+       <a href="${verifyLink}">Verify Email</a>`
     );
 
-    // In production — send `link` via your email service
-    console.log("Custom email verification link:", link);
-
     res.status(201).json({
-      message: "Signup successful. Please verify your email.",
-      link, // remove in production
-      user: {
-        uid: userRecord.uid,
-        email,
-        name,
-        role: "user",
-      },
+      message:
+        "Signup successful, please check your email to verify your account",
     });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(500).json({ error: error.message });
   }
 };
 
-/**
- * Login a user
- */
 export const login = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
 
-    if (!email || !password) {
+    if (!email || !password)
       return res.status(400).json({ error: "Email and password are required" });
-    }
 
-    const userCredential = await signInWithEmailAndPassword(
-      auth,
-      email,
-      password
-    );
-    const user = userCredential.user;
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ error: "Invalid credentials" });
 
-    const token = await user.getIdToken();
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(400).json({ error: "Invalid credentials" });
 
-    res.status(200).json({
+    const token = jwt.sign({ id: user._id, role: user.role }, JWT_SECRET, {
+      expiresIn: "7d",
+    });
+
+    res.json({
       message: "Login successful",
       token,
       user: {
-        uid: user.uid,
+        id: user._id,
         email: user.email,
-        displayName: user.displayName,
+        name: user.name,
+        role: user.role,
       },
     });
   } catch (error: any) {
-    res.status(401).json({ error: error.message });
+    res.status(500).json({ error: error.message });
   }
 };
 
-/**
- * Send a password reset link to user's email
- */
-export const forgotPassword = async (req: Request, res: Response) => {
-  const { email } = req.body;
-
-  if (!email) {
-    return res.status(400).json({ error: "Email is required" });
-  }
-
+export const verifyEmail = async (req: Request, res: Response) => {
   try {
-    const actionCodeSettings = {
-      url: `https://ai-prompt-test.netlify.app/auth/reset-password`,
-      handleCodeInApp: true,
-    };
+    const { token } = req.query;
 
-    const link = await adminAuth.generatePasswordResetLink(
-      email,
-      actionCodeSettings
+    if (!token) return res.status(400).json({ error: "Invalid token" });
+
+    const user = await User.findOne({ verificationToken: token });
+    if (!user)
+      return res.status(400).json({ error: "Invalid or expired token" });
+
+    user.isVerified = true;
+    user.verificationToken = undefined;
+    await user.save();
+
+    res.json({ message: "Email verified successfully, you can now login" });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const forgotPassword = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ error: "User not found" });
+
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000); // 1h expiry
+    await user.save();
+
+    const resetLink = `${process.env.CLIENT_URL}/reset-password?token=${resetToken}`;
+    await sendEmail(
+      user.email,
+      "Password Reset Request",
+      `<p>Hello ${user.name},</p>
+       <p>Click below to reset your password:</p>
+       <a href="${resetLink}">Reset Password</a>`
     );
 
-    console.log("Custom password reset link:", link);
-
-    res.status(200).json({
-      message: "Password reset link generated",
-      link, // remove in production
-    });
+    res.json({ message: "Password reset email sent" });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(500).json({ error: error.message });
   }
 };
 
-/**
- * Reset password (only if you want custom in-app reset)
- */
 export const resetPassword = async (req: Request, res: Response) => {
-  const { oobCode, newPassword } = req.body;
-
-  if (!oobCode || !newPassword) {
-    return res
-      .status(400)
-      .json({ error: "Reset code and new password are required" });
-  }
-
   try {
-    await confirmPasswordReset(auth, oobCode, newPassword);
-    res.status(200).json({ message: "Password reset successful" });
+    const { token, newPassword } = req.body;
+
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: new Date() },
+    });
+
+    if (!user)
+      return res.status(400).json({ error: "Invalid or expired token" });
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    res.json({ message: "Password reset successful" });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(500).json({ error: error.message });
   }
 };

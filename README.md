@@ -11,7 +11,8 @@ The project is done in:
 - Node.js
 - Express.js
 - Typescript
-- firebase
+- Mongoose
+- Mongodb
 - JWT
 
 ## Manual Installation
