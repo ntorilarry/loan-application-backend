@@ -3,7 +3,7 @@
   "info": {
     "title": "AI Prompt Backend API",
     "version": "1.0.0",
-    "description": "API documentation for AI prompt backend using Node.js, TypeScript and Supabase"
+    "description": "API documentation for AI prompt backend using Node.js, TypeScript and MongoDB"
   },
   "servers": [
     {
@@ -18,7 +18,7 @@
   "paths": {
     "/auth/signup": {
       "post": {
-        "summary": "User signup",
+        "summary": "User signup (sends verification email)",
         "requestBody": {
           "required": true,
           "content": {
@@ -36,18 +36,14 @@
           }
         },
         "responses": {
-          "200": {
-            "description": "User signed up successfully"
-          },
-          "400": {
-            "description": "Signup error"
-          }
+          "201": { "description": "Signup successful, verification email sent" },
+          "400": { "description": "Validation or email already in use" }
         }
       }
     },
     "/auth/login": {
       "post": {
-        "summary": "User login",
+        "summary": "User login (only verified users allowed)",
         "requestBody": {
           "required": true,
           "content": {
@@ -65,11 +61,29 @@
         },
         "responses": {
           "200": {
-            "description": "User logged in"
+            "description": "User logged in successfully with JWT token"
           },
           "400": {
-            "description": "Login error"
+            "description": "Invalid credentials or email not verified"
           }
+        }
+      }
+    },
+    "/auth/verify-email": {
+      "get": {
+        "summary": "Verify email address",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Verification token sent via email"
+          }
+        ],
+        "responses": {
+          "200": { "description": "Email verified successfully" },
+          "400": { "description": "Invalid or expired token" }
         }
       }
     },
@@ -91,18 +105,14 @@
           }
         },
         "responses": {
-          "200": {
-            "description": "Reset email sent"
-          },
-          "400": {
-            "description": "Error sending reset email"
-          }
+          "200": { "description": "Reset email sent" },
+          "400": { "description": "User not found" }
         }
       }
     },
     "/auth/reset-password": {
       "post": {
-        "summary": "Reset password",
+        "summary": "Reset password with token",
         "requestBody": {
           "required": true,
           "content": {
@@ -110,21 +120,17 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "accessToken": { "type": "string" },
+                  "token": { "type": "string" },
                   "newPassword": { "type": "string" }
                 },
-                "required": ["accessToken", "newPassword"]
+                "required": ["token", "newPassword"]
               }
             }
           }
         },
         "responses": {
-          "200": {
-            "description": "Password reset successfully"
-          },
-          "400": {
-            "description": "Password reset error"
-          }
+          "200": { "description": "Password reset successful" },
+          "400": { "description": "Invalid or expired token" }
         }
       }
     },
@@ -150,30 +156,6 @@
             "in": "query",
             "schema": { "type": "string" },
             "description": "Search term for title"
-          },
-          {
-            "name": "sortBy",
-            "in": "query",
-            "schema": {
-              "type": "string",
-              "enum": ["createdAt", "title"]
-            },
-            "description": "Field to sort by"
-          },
-          {
-            "name": "sortOrder",
-            "in": "query",
-            "schema": {
-              "type": "string",
-              "enum": ["asc", "desc"]
-            },
-            "description": "Sort order"
-          },
-          {
-            "name": "userId",
-            "in": "query",
-            "schema": { "type": "string" },
-            "description": "Filter by user ID (admin only or same user)"
           }
         ],
         "responses": {
@@ -186,9 +168,7 @@
                   "properties": {
                     "data": {
                       "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/Prompt"
-                      }
+                      "items": { "$ref": "#/components/schemas/Prompt" }
                     },
                     "meta": {
                       "type": "object",
@@ -204,12 +184,9 @@
               }
             }
           },
-          "401": {
-            "description": "Unauthorized"
-          }
+          "401": { "description": "Unauthorized" }
         }
       },
-
       "post": {
         "summary": "Create new prompt",
         "security": [{ "bearerAuth": [] }],
@@ -223,21 +200,19 @@
                   "title": { "type": "string" },
                   "content": { "type": "string" },
                   "userId": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Only admin can assign a different userId"
                   }
                 },
-                "required": ["title", "content", "userId"]
+                "required": ["title", "content"]
               }
             }
           }
         },
         "responses": {
-          "201": {
-            "description": "Prompt created"
-          },
-          "401": {
-            "description": "Unauthorized"
-          }
+          "201": { "description": "Prompt created" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden (not admin)" }
         }
       }
     },
@@ -268,12 +243,8 @@
           }
         },
         "responses": {
-          "200": {
-            "description": "Prompt updated"
-          },
-          "401": {
-            "description": "Unauthorized"
-          }
+          "200": { "description": "Prompt updated" },
+          "401": { "description": "Unauthorized" }
         }
       },
       "delete": {
@@ -288,50 +259,35 @@
           }
         ],
         "responses": {
-          "204": {
-            "description": "Prompt deleted"
-          },
-          "401": {
-            "description": "Unauthorized"
-          }
+          "204": { "description": "Prompt deleted" },
+          "401": { "description": "Unauthorized" }
         }
       }
     }
   },
   "components": {
     "securitySchemes": {
-      "bearerAuth": {
-        "type": "http",
-        "scheme": "bearer"
-      }
+      "bearerAuth": { "type": "http", "scheme": "bearer" }
     },
     "schemas": {
       "Prompt": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string",
-            "description": "Unique identifier for the prompt"
-          },
-          "title": {
-            "type": "string",
-            "description": "Title of the prompt"
-          },
-          "content": {
-            "type": "string",
-            "description": "Content or body of the prompt"
-          },
-          "userId": {
-            "type": "string",
-            "description": "ID of the user who created the prompt"
-          },
+          "id": { "type": "string", "description": "Unique identifier" },
+          "title": { "type": "string", "description": "Prompt title" },
+          "content": { "type": "string", "description": "Prompt content" },
+          "userId": { "type": "string", "description": "Owner user ID" },
           "createdAt": {
             "type": "string",
             "format": "date-time",
-            "description": "Timestamp when the prompt was created"
+            "description": "Created timestamp"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Updated timestamp"
           }
-        },
-        "required": ["id", "title", "content", "userId", "createdAt"]
+        }
       }
     }
   }
