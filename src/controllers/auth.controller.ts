@@ -9,21 +9,32 @@ const JWT_SECRET = process.env.JWT_SECRET || "changeme";
 
 export const signup = async (req: Request, res: Response) => {
   try {
-    const { email, password, name } = req.body;
+    const { email, password, confirmPassword, name } = req.body;
 
-    if (!email || !password || !name) {
+    // Check required fields
+    if (!email || !password || !confirmPassword || !name) {
       return res
         .status(400)
-        .json({ error: "Email, password, and name are required" });
+        .json({
+          error: "Email, password, confirmPassword, and name are required",
+        });
     }
 
+    // Ensure passwords match
+    if (password !== confirmPassword) {
+      return res.status(400).json({ error: "Passwords do not match" });
+    }
+
+    // Check if email already exists
     const existingUser = await User.findOne({ email });
     if (existingUser)
       return res.status(400).json({ error: "Email already in use" });
 
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
     const verificationToken = crypto.randomBytes(32).toString("hex");
 
+    // Create user
     const user = await User.create({
       email,
       name,
@@ -32,6 +43,7 @@ export const signup = async (req: Request, res: Response) => {
       verificationToken,
     });
 
+    // Send verification email
     const verifyLink = `${process.env.CLIENT_URL}/email-verified?token=${verificationToken}`;
     await sendEmail(
       user.email,
