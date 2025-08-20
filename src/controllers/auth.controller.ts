@@ -18,11 +18,9 @@ export const signup = async (req: Request, res: Response) => {
 
     // Check required fields
     if (!email || !password || !confirmPassword || !name) {
-      return res
-        .status(400)
-        .json({
-          error: "Email, password, confirmPassword, and name are required",
-        });
+      return res.status(400).json({
+        error: "Email, password, confirmPassword, and name are required",
+      });
     }
 
     // Ensure passwords match
