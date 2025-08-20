@@ -44,7 +44,7 @@ export const signup = async (req: Request, res: Response) => {
     });
 
     // Send verification email
-    const verifyLink = `${process.env.CLIENT_URL}/email-verified?token=${verificationToken}`;
+    const verifyLink = `${process.env.CLIENT_URL}/auth/email-verified?token=${verificationToken}`;
     await sendEmail(
       user.email,
       "Verify your email",
@@ -125,7 +125,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
     user.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000); // 1h expiry
     await user.save();
 
-    const resetLink = `${process.env.CLIENT_URL}/reset-password?token=${resetToken}`;
+    const resetLink = `${process.env.CLIENT_URL}/auth/reset-password?token=${resetToken}`;
     await sendEmail(
       user.email,
       "Password Reset Request",
