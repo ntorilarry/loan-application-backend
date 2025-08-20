@@ -6,12 +6,14 @@ import promptRoutes from "./routes/prompt.routes";
 import swaggerUi from "swagger-ui-express";
 import swaggerDocument from "./data/swagger.json";
 import { connectDB } from "./services/mongo";
+import cookieParser from "cookie-parser";
 
 dotenv.config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(cookieParser());
 
 connectDB();
 
