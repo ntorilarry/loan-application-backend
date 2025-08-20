@@ -37,7 +37,9 @@
           }
         },
         "responses": {
-          "201": { "description": "Signup successful, verification email sent" },
+          "201": {
+            "description": "Signup successful, verification email sent"
+          },
           "400": { "description": "Validation or email already in use" }
         }
       }
@@ -334,8 +336,8 @@
   },
   "components": {
     "securitySchemes": {
-      "bearerAuth": { 
-        "type": "http", 
+      "bearerAuth": {
+        "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT",
         "description": "JWT Access Token for authentication"
