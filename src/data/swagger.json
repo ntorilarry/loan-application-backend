@@ -336,7 +336,7 @@
     "/chat": {
       "post": {
         "summary": "Chat with custom prompts",
-        "description": "Send a message to the system. It will respond using stored custom prompts (rule-based or template-based).",
+        "description": "Send a message to the system. It will respond using stored custom prompts (rule-based or template-based). Also creates or associates a tag for this chat.",
         "security": [{ "bearerAuth": [] }],
         "requestBody": {
           "required": true,
@@ -363,21 +363,74 @@
                 "schema": {
                   "type": "object",
                   "properties": {
+                    "message": { "type": "string", "example": "How are you?" },
                     "reply": {
                       "type": "string",
                       "example": "I'm good, thanks!"
+                    },
+                    "prompts": {
+                      "type": "array",
+                      "items": { "type": "string" },
+                      "example": ["Greeting Prompt"]
+                    },
+                    "tag": {
+                      "$ref": "#/components/schemas/Tag"
                     }
                   }
                 }
               }
             }
           },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "500": {
-            "description": "Server error"
+          "401": { "description": "Unauthorized" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/chat/tags": {
+      "get": {
+        "summary": "List all tags",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "List of tags",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Tag" }
+                }
+              }
+            }
           }
+        }
+      }
+    },
+    "/chat/tags/{tagId}/history": {
+      "get": {
+        "summary": "Get chat history by tag ID",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "tagId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Tag ID to filter chat history"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Chat history under this tag",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/ChatHistory" }
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" }
         }
       }
     }
