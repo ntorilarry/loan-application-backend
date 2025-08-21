@@ -19,13 +19,12 @@ export const createPrompt = async (req: AuthRequest, res: Response) => {
   }
 
   try {
-    const prompt = await Prompt.create({
+    await Prompt.create({
       title,
       content,
       userId: targetUserId,
     });
 
-    res.status(201).json(prompt);
     res.json({ message: "Created successfully" });
   } catch (error: any) {
     res.status(400).json({ error: error.message });
