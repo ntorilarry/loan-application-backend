@@ -112,7 +112,9 @@ export const login = async (req: Request, res: Response) => {
 
 export const refreshToken = async (req: Request, res: Response) => {
   try {
-    const refreshToken = req.cookies.refreshToken;
+    const tokenFromCookie = req.cookies.refreshToken;
+    const tokenFromBody = req.body.refreshToken;
+    const refreshToken = tokenFromCookie || tokenFromBody;
 
     if (!refreshToken) {
       return res.status(401).json({ error: "Refresh token required" });
@@ -135,9 +137,7 @@ export const refreshToken = async (req: Request, res: Response) => {
       { expiresIn: "15m" }
     );
 
-    res.json({
-      accessToken: newAccessToken,
-    });
+    res.json({ accessToken: newAccessToken });
   } catch (error: any) {
     if (error.name === "JsonWebTokenError") {
       return res.status(403).json({ error: "Invalid refresh token" });
@@ -148,6 +148,7 @@ export const refreshToken = async (req: Request, res: Response) => {
     res.status(500).json({ error: error.message });
   }
 };
+
 
 export const logout = async (req: Request, res: Response) => {
   try {
