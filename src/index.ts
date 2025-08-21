@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import authRoutes from "./routes/auth.routes";
 import promptRoutes from "./routes/prompt.routes";
+import chatRoutes from "./routes/chat.routes";
 import swaggerUi from "swagger-ui-express";
 import swaggerDocument from "./data/swagger.json";
 import { connectDB } from "./services/mongo";
@@ -19,6 +20,7 @@ connectDB();
 
 app.use("/api/auth", authRoutes);
 app.use("/api/prompts", promptRoutes);
+app.use("/api/chat-prompts", chatRoutes);
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 const PORT = process.env.PORT || 5000;
