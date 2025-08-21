@@ -20,7 +20,7 @@ connectDB();
 
 app.use("/api/auth", authRoutes);
 app.use("/api/prompts", promptRoutes);
-app.use("/api/chat-prompts", chatRoutes);
+app.use("/api/chat", chatRoutes);
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 const PORT = process.env.PORT || 5000;
