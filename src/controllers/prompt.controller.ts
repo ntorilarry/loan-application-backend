@@ -88,6 +88,7 @@ export const deletePrompt = async (req: AuthRequest, res: Response) => {
 
   try {
     await Prompt.findByIdAndDelete(id);
+    res.json({ message: "Deleted successfully" });
     res.status(204).send();
   } catch (error: any) {
     res.status(400).json({ error: error.message });
