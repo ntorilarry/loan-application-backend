@@ -5,19 +5,31 @@ import { AuthRequest } from "../models/auth.model";
 import { ChatHistory, Tag } from "../models/chat.model";
 
 export const chatWithPrompt = async (req: AuthRequest, res: Response) => {
-  const { message } = req.body;
+  const { message, tagId } = req.body;
   const requester = req.user;
 
   if (!requester) return res.status(401).json({ error: "Unauthorized" });
 
   try {
+    // Search prompts by title
     const prompts = await Prompt.find({
       title: { $regex: message, $options: "i" },
     });
 
-    let tag = await Tag.findOne({ name: message });
-    if (!tag) {
-      tag = await Tag.create({ name: message });
+    let tag;
+
+    if (tagId) {
+      // If tagId passed, just find the tag
+      tag = await Tag.findById(tagId);
+      if (!tag) {
+        return res.status(404).json({ error: "Tag not found" });
+      }
+    } else {
+      // If no tagId, create/find based on message
+      tag = await Tag.findOne({ name: message });
+      if (!tag) {
+        tag = await Tag.create({ name: message });
+      }
     }
 
     let reply = "Sorry, I don’t understand that yet.";
@@ -28,6 +40,7 @@ export const chatWithPrompt = async (req: AuthRequest, res: Response) => {
       titles = prompts.map((p) => p.title);
     }
 
+    // Save chat history linked to tag
     const history = await ChatHistory.create({
       userId: requester.id,
       message,
