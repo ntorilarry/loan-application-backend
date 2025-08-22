@@ -69,6 +69,6 @@ export const listTags = async (req: AuthRequest, res: Response) => {
 export const getChatHistoryByTag = async (req: AuthRequest, res: Response) => {
   const { tagId } = req.params;
 
-  const history = await ChatHistory.find({ tagId }).sort({ createdAt: -1 });
+  const history = await ChatHistory.find({ tagId });
   res.json(history);
 };
