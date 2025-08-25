@@ -90,7 +90,7 @@ export const getChatHistoryByTag = async (req: AuthRequest, res: Response) => {
   res.json(history);
 };
 
-// Delete chat history by tag
+// Delete tag and its associated chat history
 export const deleteChatHistoryByTag = async (
   req: AuthRequest,
   res: Response
@@ -98,27 +98,24 @@ export const deleteChatHistoryByTag = async (
   const { tagId } = req.params;
   const requester = req.user;
 
-  if (!requester) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
+  if (!requester) return res.status(401).json({ error: "Unauthorized" });
 
   try {
-    // delete chat histories linked to this tag
-    const chatResult = await ChatHistory.deleteMany({
-      userId: requester.id,
-      tagId,
-    });
+    // First check if tag exists
+    const tag = await Tag.findById(tagId);
+    if (!tag) {
+      return res.status(404).json({ error: "Tag not found" });
+    }
 
-    // delete the tag itself
-    const tagResult = await Tag.deleteOne({
-      _id: tagId,
-      createdBy: requester.id,
-    });
+    // Delete all chat history associated with this tag
+    await ChatHistory.deleteMany({ tagId });
+
+    // Delete the tag itself
+    await Tag.findByIdAndDelete(tagId);
 
     res.json({
-      message: "Deleted successfully",
-      deletedChats: chatResult.deletedCount,
-      deletedTag: tagResult.deletedCount,
+      message: "Tag and associated chat history deleted successfully",
+      deletedTag: { id: tag._id, name: tag.name },
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
