@@ -61,7 +61,9 @@
           }
         },
         "responses": {
-          "201": { "description": "Signup successful, verification email sent" },
+          "201": {
+            "description": "Signup successful, verification email sent"
+          },
           "400": { "description": "Validation or email already in use" }
         }
       }
@@ -224,8 +226,16 @@
         "summary": "Get all user prompts",
         "security": [{ "bearerAuth": [] }],
         "parameters": [
-          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
-          { "name": "size", "in": "query", "schema": { "type": "integer", "default": 10 } },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "default": 1 }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": { "type": "integer", "default": 10 }
+          },
           { "name": "search", "in": "query", "schema": { "type": "string" } }
         ],
         "responses": {
@@ -290,7 +300,14 @@
       "put": {
         "summary": "Update a prompt",
         "security": [{ "bearerAuth": [] }],
-        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -313,7 +330,14 @@
       "delete": {
         "summary": "Delete a prompt",
         "security": [{ "bearerAuth": [] }],
-        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
         "responses": {
           "204": { "description": "Prompt deleted successfully (no content)" },
           "401": { "description": "Unauthorized" }
@@ -333,7 +357,10 @@
                 "type": "object",
                 "properties": {
                   "message": { "type": "string", "example": "How are you?" },
-                  "tagId": { "type": "string", "description": "Optional existing tag ID" }
+                  "tagId": {
+                    "type": "string",
+                    "description": "Optional existing tag ID"
+                  }
                 },
                 "required": ["message"]
               }
@@ -350,7 +377,10 @@
                   "properties": {
                     "message": { "type": "string" },
                     "reply": { "type": "string" },
-                    "prompts": { "type": "array", "items": { "type": "string" } },
+                    "prompts": {
+                      "type": "array",
+                      "items": { "type": "string" }
+                    },
                     "tag": { "$ref": "#/components/schemas/Tag" }
                   }
                 }
@@ -386,7 +416,12 @@
         "summary": "Get chat history by tag ID",
         "security": [{ "bearerAuth": [] }],
         "parameters": [
-          { "name": "tagId", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "tagId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
         ],
         "responses": {
           "200": {
@@ -401,6 +436,38 @@
             }
           },
           "401": { "description": "Unauthorized" }
+        }
+      },
+      "delete": {
+        "summary": "Delete chat history by tag ID",
+        "description": "Deletes all chat messages for the given tag belonging to the authenticated user.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "tagId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully deleted chat history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "deletedCount": { "type": "integer", "example": 5 }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Tag not found" },
+          "500": { "description": "Server error" }
         }
       }
     }
