@@ -90,3 +90,22 @@ export const getChatHistoryByTag = async (req: AuthRequest, res: Response) => {
   const history = await ChatHistory.find({ tagId });
   res.json(history);
 };
+
+
+// Delete chat history by tag
+export const deleteChatHistoryByTag = async (req: AuthRequest, res: Response) => {
+  const { tagId } = req.params;
+  const requester = req.user;
+
+  if (!requester) return res.status(401).json({ error: "Unauthorized" });
+
+  try {
+    const result = await ChatHistory.deleteMany({ userId: requester.id, tagId });
+    res.json({
+      success: true,
+      deletedCount: result.deletedCount,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+};
