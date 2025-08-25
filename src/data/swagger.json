@@ -381,7 +381,7 @@
         }
       }
     },
-    "/chat/tags/{tagId}/history": {
+    "/chat/chat-history/{tagId}": {
       "get": {
         "summary": "Get chat history by tag ID",
         "security": [{ "bearerAuth": [] }],
