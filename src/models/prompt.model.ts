@@ -1,4 +1,3 @@
-
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface IPrompt extends Document {
@@ -7,6 +6,7 @@ export interface IPrompt extends Document {
   userId: string;
   createdAt: Date;
   updatedAt: Date | null;
+  embedding?: number[];
 }
 
 const PromptSchema = new Schema<IPrompt>({
@@ -15,6 +15,7 @@ const PromptSchema = new Schema<IPrompt>({
   userId: { type: String, required: true },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: null },
+  embedding: { type: [Number], default: [] },
 });
 
 export default mongoose.model<IPrompt>("Prompt", PromptSchema);

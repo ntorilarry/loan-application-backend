@@ -2,6 +2,7 @@
 import { Response } from "express";
 import Prompt from "../models/prompt.model";
 import { AuthRequest } from "../models/auth.model";
+import { getEmbedding } from "../utils/embeddings";
 
 // Create Prompt
 export const createPrompt = async (req: AuthRequest, res: Response) => {
@@ -19,10 +20,13 @@ export const createPrompt = async (req: AuthRequest, res: Response) => {
   }
 
   try {
+    const vector = await getEmbedding(`${title} ${content}`);
+
     await Prompt.create({
       title,
       content,
       userId: targetUserId,
+      embedding: vector,
     });
 
     res.json({ message: "Created successfully" });
@@ -31,6 +35,26 @@ export const createPrompt = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// Update Prompt
+export const updatePrompt = async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  const { title, content } = req.body;
+
+  try {
+    const vector = await getEmbedding(`${title} ${content}`);
+
+    await Prompt.findByIdAndUpdate(id, {
+      title,
+      content,
+      embedding: vector,
+      updatedAt: new Date(),
+    });
+
+    res.json({ message: "Updated successfully" });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+};
 // Get User Prompts
 export const getUserPrompts = async (req: AuthRequest, res: Response) => {
   const { page = 1, size = 10, search = "" } = req.query as any;
@@ -65,23 +89,6 @@ export const getUserPrompts = async (req: AuthRequest, res: Response) => {
   }
 };
 
-// Update Prompt
-export const updatePrompt = async (req: AuthRequest, res: Response) => {
-  const { id } = req.params;
-  const { title, content } = req.body;
-
-  try {
-    await Prompt.findByIdAndUpdate(id, {
-      title,
-      content,
-      updatedAt: new Date(),
-    });
-    res.json({ message: "Updated successfully" });
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
-  }
-};
-
 // Delete Prompt
 export const deletePrompt = async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
@@ -89,7 +96,6 @@ export const deletePrompt = async (req: AuthRequest, res: Response) => {
   try {
     await Prompt.findByIdAndDelete(id);
     res.json({ message: "Deleted successfully" });
-    res.status(204).send();
   } catch (error: any) {
     res.status(400).json({ error: error.message });
   }

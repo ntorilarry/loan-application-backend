@@ -1,8 +1,17 @@
-// controllers/chat.controller.ts
 import { Response } from "express";
 import Prompt from "../models/prompt.model";
 import { AuthRequest } from "../models/auth.model";
 import { ChatHistory, Tag } from "../models/chat.model";
+import { pipeline } from "@xenova/transformers";
+import { getEmbedding } from "../utils/embeddings";
+
+
+function cosineSim(a: number[], b: number[]) {
+  const dot = a.reduce((sum, ai, i) => sum + ai * b[i], 0);
+  const normA = Math.sqrt(a.reduce((sum, ai) => sum + ai * ai, 0));
+  const normB = Math.sqrt(b.reduce((sum, bi) => sum + bi * bi, 0));
+  return dot / (normA * normB);
+}
 
 export const chatWithPrompt = async (req: AuthRequest, res: Response) => {
   const { message, tagId } = req.body;
@@ -11,37 +20,47 @@ export const chatWithPrompt = async (req: AuthRequest, res: Response) => {
   if (!requester) return res.status(401).json({ error: "Unauthorized" });
 
   try {
-    // Search prompts by title
-    const prompts = await Prompt.find({
-      title: { $regex: message, $options: "i" },
-    });
+    // Generate embedding for user message
+    const queryVector = await getEmbedding(message);
 
-    let tag;
+    // Fetch all prompts (could optimize later w/ vector DB)
+    const prompts = await Prompt.find();
 
-    if (tagId) {
-      // If tagId passed, just find the tag
-      tag = await Tag.findById(tagId);
-      if (!tag) {
-        return res.status(404).json({ error: "Tag not found" });
+    let bestPrompt = null;
+    let bestScore = -1;
+
+    for (const p of prompts) {
+      if (!p.embedding || p.embedding.length === 0) continue;
+      const score = cosineSim(queryVector, p.embedding);
+      if (score > bestScore) {
+        bestScore = score;
+        bestPrompt = p;
       }
+    }
+
+    // Handle tag creation or retrieval
+    let tag;
+    if (tagId) {
+      tag = await Tag.findById(tagId);
+      if (!tag) return res.status(404).json({ error: "Tag not found" });
     } else {
-      // If no tagId, create/find based on message
       tag = await Tag.findOne({ name: message });
       if (!tag) {
         tag = await Tag.create({ name: message });
       }
     }
 
+    // Decide reply
     let reply = "Sorry, I don’t understand that yet.";
     let titles: string[] | null = null;
 
-    if (prompts && prompts.length > 0) {
-      reply = prompts[0].content;
+    if (bestPrompt) {
+      reply = bestPrompt.content;
       titles = prompts.map((p) => p.title);
     }
 
-    // Save chat history linked to tag
-    const history = await ChatHistory.create({
+    // Save chat history
+    await ChatHistory.create({
       userId: requester.id,
       message,
       reply,
@@ -65,7 +84,6 @@ export const listTags = async (req: AuthRequest, res: Response) => {
   res.json(tags);
 };
 
-// Get chat history by tag
 export const getChatHistoryByTag = async (req: AuthRequest, res: Response) => {
   const { tagId } = req.params;
 

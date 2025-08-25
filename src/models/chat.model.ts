@@ -1,9 +1,5 @@
-// models/chat.model.ts
 import mongoose, { Schema, Document } from "mongoose";
 
-/**
- * TAG MODEL
- */
 export interface ITag extends Document {
   name: string;
   createdAt: Date;
@@ -18,9 +14,6 @@ const TagSchema: Schema = new Schema(
 
 export const Tag = mongoose.model<ITag>("Tag", TagSchema);
 
-/**
- * CHAT HISTORY MODEL
- */
 export interface IChatHistory extends Document {
   userId: string;
   message: string;
