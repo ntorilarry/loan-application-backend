@@ -5,7 +5,6 @@ import { ChatHistory, Tag } from "../models/chat.model";
 import { pipeline } from "@xenova/transformers";
 import { getEmbedding } from "../utils/embeddings";
 
-
 function cosineSim(a: number[], b: number[]) {
   const dot = a.reduce((sum, ai, i) => sum + ai * b[i], 0);
   const normA = Math.sqrt(a.reduce((sum, ai) => sum + ai * ai, 0));
@@ -91,19 +90,35 @@ export const getChatHistoryByTag = async (req: AuthRequest, res: Response) => {
   res.json(history);
 };
 
-
 // Delete chat history by tag
-export const deleteChatHistoryByTag = async (req: AuthRequest, res: Response) => {
+export const deleteChatHistoryByTag = async (
+  req: AuthRequest,
+  res: Response
+) => {
   const { tagId } = req.params;
   const requester = req.user;
 
-  if (!requester) return res.status(401).json({ error: "Unauthorized" });
+  if (!requester) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
 
   try {
-    const result = await ChatHistory.deleteMany({ userId: requester.id, tagId });
+    // delete chat histories linked to this tag
+    const chatResult = await ChatHistory.deleteMany({
+      userId: requester.id,
+      tagId,
+    });
+
+    // delete the tag itself
+    const tagResult = await Tag.deleteOne({
+      _id: tagId,
+      createdBy: requester.id,
+    });
+
     res.json({
       message: "Deleted successfully",
-      deletedCount: result.deletedCount,
+      deletedChats: chatResult.deletedCount,
+      deletedTag: tagResult.deletedCount,
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
