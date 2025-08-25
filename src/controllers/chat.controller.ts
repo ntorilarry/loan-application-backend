@@ -102,7 +102,7 @@ export const deleteChatHistoryByTag = async (req: AuthRequest, res: Response) =>
   try {
     const result = await ChatHistory.deleteMany({ userId: requester.id, tagId });
     res.json({
-      success: true,
+      message: "Deleted successfully",
       deletedCount: result.deletedCount,
     });
   } catch (err: any) {
