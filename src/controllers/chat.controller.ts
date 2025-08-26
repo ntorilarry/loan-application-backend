@@ -103,14 +103,20 @@ function analyzeKeywords(
   };
 }
 
-// Context-aware response generation
+// Clean replies by removing boilerplate and trimming
+function cleanReplyText(reply: string): string {
+  return reply
+    .replace(/^Based on our conversation:/i, "")
+    .replace(/^I'm not fully sure.*?:/i, "")
+    .trim();
+}
+
 async function generateContextAwareResponse(
   baseReply: string,
   historyContext: string[],
   currentTag: any,
   userMessage: string
 ): Promise<string> {
-  // If model gave a meaningful reply, just return it
   if (!baseReply.startsWith("I'm not sure")) {
     return baseReply;
   }
@@ -119,15 +125,15 @@ async function generateContextAwareResponse(
     return baseReply;
   }
 
-  // Use only the last 2 replies as context
-  const recentReplies = historyContext.slice(0, 2).map((ctx) => {
-    const parts = ctx.split(" → ");
-    return parts.length > 1 ? parts[1] : "";
-  });
+  const recentReplies = historyContext
+    .slice(0, 2)
+    .map((ctx) => {
+      const parts = ctx.split(" → ");
+      return parts.length > 1 ? cleanReplyText(parts[1]) : "";
+    })
+    .filter(Boolean);
 
   const lastReply = recentReplies[0];
-
-  // Check if the new message looks like a follow-up
   const isFollowUp =
     /what about|and what|also|more about|tell me more/i.test(userMessage);
 
@@ -135,11 +141,15 @@ async function generateContextAwareResponse(
     return `Building on our last discussion: ${lastReply}. Could you clarify a bit more so I can help?`;
   }
 
-  // Otherwise give a short context-aware fallback
-  return `We’ve been discussing ${recentReplies.join(
-    " and "
-  )}. Could you rephrase your question so I can give a clearer answer?`;
+  if (recentReplies.length > 0) {
+    return `We’ve been discussing ${recentReplies.join(
+      " and "
+    )}. Could you rephrase your question so I can give a clearer answer?`;
+  }
+
+  return baseReply;
 }
+
 
 
 // Confidence scoring with multiple factors
