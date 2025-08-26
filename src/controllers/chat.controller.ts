@@ -2,7 +2,6 @@ import { Response } from "express";
 import Prompt from "../models/prompt.model";
 import { AuthRequest } from "../models/auth.model";
 import { ChatHistory, Tag } from "../models/chat.model";
-import { pipeline } from "@xenova/transformers";
 import { getEmbedding } from "../utils/embeddings";
 
 function cosineSim(a: number[], b: number[]) {
@@ -19,25 +18,63 @@ export const chatWithPrompt = async (req: AuthRequest, res: Response) => {
   if (!requester) return res.status(401).json({ error: "Unauthorized" });
 
   try {
-    // Generate embedding for user message
+    // Step 1: Embed user query
     const queryVector = await getEmbedding(message);
 
-    // Fetch all prompts (could optimize later w/ vector DB)
+    // Step 2: Fetch prompts (in future: replace with vector DB query)
     const prompts = await Prompt.find();
 
-    let bestPrompt = null;
-    let bestScore = -1;
-
+    // Step 3: Score prompts
+    let scoredPrompts = [];
     for (const p of prompts) {
       if (!p.embedding || p.embedding.length === 0) continue;
-      const score = cosineSim(queryVector, p.embedding);
-      if (score > bestScore) {
-        bestScore = score;
-        bestPrompt = p;
-      }
+
+      const semanticScore = cosineSim(queryVector, p.embedding);
+
+      // Keyword overlap bonus (simple TF check)
+      const keywordOverlap = p.title
+        .split(" ")
+        .filter((word: string) =>
+          message.toLowerCase().includes(word.toLowerCase())
+        ).length;
+
+      // Weighted scoring (70% semantic, 30% keyword overlap)
+      const totalScore = semanticScore * 0.7 + keywordOverlap * 0.3;
+
+      scoredPrompts.push({ prompt: p, score: totalScore });
     }
 
-    // Handle tag creation or retrieval
+    // Step 4: Sort by score
+    scoredPrompts.sort((a, b) => b.score - a.score);
+
+    // Step 5: Confidence threshold
+    const bestMatch = scoredPrompts[0];
+    let reply = "Sorry, I don’t understand that yet.";
+    let candidateTitles: string[] | null = null;
+
+    if (bestMatch && bestMatch.score > 0.65) {
+      reply = bestMatch.prompt.content;
+      candidateTitles = scoredPrompts.slice(0, 3).map((p) => p.prompt.title); // top-3 suggestions
+    }
+
+    // Step 6: Contextual memory — use last N chats in this tag
+    let historyContext: string[] = [];
+    if (tagId) {
+      const pastChats = await ChatHistory.find({ tagId })
+        .sort({ createdAt: -1 })
+        .limit(3);
+
+      historyContext = pastChats.map((c) => `${c.message} → ${c.reply}`);
+    }
+
+    // If reply is still generic, enhance with context
+    if (reply.startsWith("Sorry") && historyContext.length > 0) {
+      reply = `I'm not fully sure, but based on our past conversation: ${historyContext.join(
+        " | "
+      )}`;
+    }
+
+    // Step 7: Tag handling
     let tag;
     if (tagId) {
       tag = await Tag.findById(tagId);
@@ -49,29 +86,23 @@ export const chatWithPrompt = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // Decide reply
-    let reply = "Sorry, I don’t understand that yet.";
-    let titles: string[] | null = null;
-
-    if (bestPrompt) {
-      reply = bestPrompt.content;
-      titles = prompts.map((p) => p.title);
-    }
-
-    // Save chat history
+    // Step 8: Save chat history
     await ChatHistory.create({
       userId: requester.id,
       message,
       reply,
-      prompts: titles || [],
+      prompts: candidateTitles || [],
       tagId: tag._id,
     });
 
+    // Final response
     res.json({
       message,
       reply,
-      prompts: titles,
+      prompts: candidateTitles,
       tag: { id: tag._id, name: tag.name },
+      confidence: bestMatch?.score || 0,
+      historyUsed: historyContext.length > 0,
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
