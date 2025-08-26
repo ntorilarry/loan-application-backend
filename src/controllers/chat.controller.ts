@@ -110,32 +110,37 @@ async function generateContextAwareResponse(
   currentTag: any,
   userMessage: string
 ): Promise<string> {
-  if (!baseReply.startsWith("I'm not sure") || historyContext.length === 0) {
+  // If model gave a meaningful reply, just return it
+  if (!baseReply.startsWith("I'm not sure")) {
     return baseReply;
   }
 
-  const recentReplies = historyContext
-    .map((ctx) => {
-      const parts = ctx.split(" → ");
-      return parts.length > 1 ? parts[1] : "";
-    })
-    .filter((reply) => reply.length > 0);
-
-  // Check for follow-up questions
-  const isFollowUp =
-    userMessage.toLowerCase().includes("what about") ||
-    userMessage.toLowerCase().includes("and what") ||
-    userMessage.toLowerCase().includes("also") ||
-    userMessage.toLowerCase().includes("more about");
-
-  if (isFollowUp && recentReplies.length > 0) {
-    return `Building on our previous discussion: ${recentReplies[0]}. Additionally, ${baseReply}`;
+  if (historyContext.length === 0) {
+    return baseReply;
   }
 
-  return `Based on our conversation: ${historyContext.join(
-    " | "
-  )}. Currently: ${baseReply}`;
+  // Use only the last 2 replies as context
+  const recentReplies = historyContext.slice(0, 2).map((ctx) => {
+    const parts = ctx.split(" → ");
+    return parts.length > 1 ? parts[1] : "";
+  });
+
+  const lastReply = recentReplies[0];
+
+  // Check if the new message looks like a follow-up
+  const isFollowUp =
+    /what about|and what|also|more about|tell me more/i.test(userMessage);
+
+  if (isFollowUp && lastReply) {
+    return `Building on our last discussion: ${lastReply}. Could you clarify a bit more so I can help?`;
+  }
+
+  // Otherwise give a short context-aware fallback
+  return `We’ve been discussing ${recentReplies.join(
+    " and "
+  )}. Could you rephrase your question so I can give a clearer answer?`;
 }
+
 
 // Confidence scoring with multiple factors
 function calculateConfidenceScore(
