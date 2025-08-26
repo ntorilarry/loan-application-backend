@@ -76,6 +76,7 @@ export const login = async (req: Request, res: Response) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ error: "Invalid credentials" });
 
+    const accessTokenExpiresIn = 1000 * 60 * 1000; // 1000 minutes in ms
     const accessToken = jwt.sign(
       { id: user._id, role: user.role },
       JWT_SECRET,
@@ -97,6 +98,7 @@ export const login = async (req: Request, res: Response) => {
     res.json({
       message: "Login successful",
       accessToken,
+      expiresAt: new Date(Date.now() + accessTokenExpiresIn).toISOString(),
       refreshToken,
       user: {
         id: user._id,
@@ -109,6 +111,7 @@ export const login = async (req: Request, res: Response) => {
     res.status(500).json({ error: error.message });
   }
 };
+
 
 export const refreshToken = async (req: Request, res: Response) => {
   try {
