@@ -12,9 +12,9 @@ const router = express.Router();
 router.use(requireAuth);
 
 // Chat interaction
-router.post("/", chatWithPrompt);
-router.get("/tags", listTags);
-router.get("/chat-history/:tagId", getChatHistoryByTag);
-router.delete("/chat-history/:tagId", deleteChatHistoryByTag);
+router.post("/:userId", chatWithPrompt);
+router.get("/tags/:userId", listTags);
+router.get("/chat-history/:userId/:tagId", getChatHistoryByTag);
+router.delete("/chat-history/:userId/:tagId", deleteChatHistoryByTag);
 
 export default router;

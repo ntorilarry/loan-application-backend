@@ -40,7 +40,6 @@ function calculateSimilarity(
   };
 }
 
-
 function analyzeKeywords(
   query: string,
   title: string,
@@ -64,7 +63,6 @@ function analyzeKeywords(
   let partialMatches = 0;
 
   queryWords.forEach((queryWord) => {
-
     if (titleWords.includes(queryWord)) {
       titleMatch += 2;
       exactMatches++;
@@ -73,7 +71,6 @@ function analyzeKeywords(
       contentMatch += 1;
       exactMatches++;
     }
-
 
     const titlePartial = titleWords.some(
       (word) => word.includes(queryWord) || queryWord.includes(word)
@@ -99,7 +96,6 @@ function analyzeKeywords(
     partialMatches,
   };
 }
-
 
 function cleanReplyText(reply: string): string {
   return reply
@@ -170,9 +166,9 @@ function calculateConfidenceScore(
 
 export const chatWithPrompt = async (req: AuthRequest, res: Response) => {
   const { message, tagId } = req.body;
-  const requester = req.user;
+  const { userId } = req.params;
 
-  if (!requester) return res.status(401).json({ error: "Unauthorized" });
+  if (!userId) return res.status(401).json({ error: "User ID required" });
 
   try {
     const queryVector = await getEmbedding(message);
@@ -225,7 +221,7 @@ export const chatWithPrompt = async (req: AuthRequest, res: Response) => {
     let historyRelevance = 0;
 
     if (tagId) {
-      const pastChats = await ChatHistory.find({ tagId, userId: requester.id })
+      const pastChats = await ChatHistory.find({ tagId, userId: userId })
         .sort({ createdAt: -1 })
         .limit(5);
 
@@ -257,11 +253,11 @@ export const chatWithPrompt = async (req: AuthRequest, res: Response) => {
 
     let tag;
     if (tagId) {
-      tag = await Tag.findOne({ _id: tagId, userId: requester.id });
+      tag = await Tag.findOne({ _id: tagId, userId: userId });
       if (!tag) {
         tag = await Tag.create({
           name: message.substring(0, 50),
-          userId: requester.id,
+          userId: userId,
         });
       }
     } else {
@@ -272,12 +268,12 @@ export const chatWithPrompt = async (req: AuthRequest, res: Response) => {
 
       tag = await Tag.findOne({
         name: { $regex: potentialTagName, $options: "i" },
-        userId: requester.id,
+        userId: userId,
       });
       if (!tag) {
         tag = await Tag.create({
           name: potentialTagName,
-          userId: requester.id,
+          userId: userId,
         });
       }
     }
@@ -305,7 +301,7 @@ export const chatWithPrompt = async (req: AuthRequest, res: Response) => {
     }
 
     await ChatHistory.create({
-      userId: requester.id,
+      userId: userId,
       message,
       reply: enhancedReply,
       prompts: candidateTitles,
@@ -345,20 +341,20 @@ export const chatWithPrompt = async (req: AuthRequest, res: Response) => {
 };
 
 export const listTags = async (req: AuthRequest, res: Response) => {
-  const requester = req.user;
-  if (!requester) return res.status(401).json({ error: "Unauthorized" });
+  const { userId } = req.params;
 
-  const tags = await Tag.find({ userId: requester.id }).sort({ createdAt: -1 });
+  if (!userId) return res.status(401).json({ error: "User ID required" });
+
+  const tags = await Tag.find({ userId: userId }).sort({ createdAt: -1 });
   res.json(tags);
 };
 
 export const getChatHistoryByTag = async (req: AuthRequest, res: Response) => {
-  const { tagId } = req.params;
-  const requester = req.user;
+  const { tagId, userId } = req.params;
 
-  if (!requester) return res.status(401).json({ error: "Unauthorized" });
+  if (!userId) return res.status(401).json({ error: "User ID required" });
 
-  const history = await ChatHistory.find({ tagId, userId: requester.id });
+  const history = await ChatHistory.find({ tagId, userId: userId });
   res.json(history);
 };
 
@@ -366,10 +362,9 @@ export const deleteChatHistoryByTag = async (
   req: AuthRequest,
   res: Response
 ) => {
-  const { tagId } = req.params;
-  const requester = req.user;
+  const { tagId, userId } = req.params;
 
-  if (!requester) return res.status(401).json({ error: "Unauthorized" });
+  if (!userId) return res.status(401).json({ error: "User ID required" });
 
   try {
     const tag = await Tag.findById(tagId);
