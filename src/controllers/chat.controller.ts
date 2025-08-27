@@ -134,8 +134,9 @@ async function generateContextAwareResponse(
     .filter(Boolean);
 
   const lastReply = recentReplies[0];
-  const isFollowUp =
-    /what about|and what|also|more about|tell me more/i.test(userMessage);
+  const isFollowUp = /what about|and what|also|more about|tell me more/i.test(
+    userMessage
+  );
 
   if (isFollowUp && lastReply) {
     return `Building on our last discussion: ${lastReply}. Could you clarify a bit more so I can help?`;
@@ -149,8 +150,6 @@ async function generateContextAwareResponse(
 
   return baseReply;
 }
-
-
 
 // Confidence scoring with multiple factors
 function calculateConfidenceScore(
@@ -352,21 +351,29 @@ export const chatWithPrompt = async (req: AuthRequest, res: Response) => {
   }
 };
 
-// ... keep your existing listTags, getChatHistoryByTag, deleteChatHistoryByTag functions
-
 export const listTags = async (req: AuthRequest, res: Response) => {
-  const tags = await Tag.find().sort({ createdAt: -1 });
+  const requester = req.user;
+  if (!requester) return res.status(401).json({ error: "Unauthorized" });
+
+  const tags = await Tag.find({ userId: requester.userId }).sort({
+    createdAt: -1,
+  }); // Filter by user ID
   res.json(tags);
 };
 
 export const getChatHistoryByTag = async (req: AuthRequest, res: Response) => {
   const { tagId } = req.params;
+  const requester = req.user;
 
-  const history = await ChatHistory.find({ tagId });
+  if (!requester) return res.status(401).json({ error: "Unauthorized" });
+
+  const history = await ChatHistory.find({
+    tagId,
+    userId: requester.userId, // Filter by user ID
+  });
   res.json(history);
 };
 
-// Delete tag and its associated chat history
 export const deleteChatHistoryByTag = async (
   req: AuthRequest,
   res: Response
@@ -377,14 +384,21 @@ export const deleteChatHistoryByTag = async (
   if (!requester) return res.status(401).json({ error: "Unauthorized" });
 
   try {
-    // First check if tag exists
-    const tag = await Tag.findById(tagId);
+    // First check if tag exists and belongs to user
+    const tag = await Tag.findOne({
+      _id: tagId,
+      userId: requester.userId, // Filter by user ID
+    });
+
     if (!tag) {
       return res.status(404).json({ error: "Tag not found" });
     }
 
-    // Delete all chat history associated with this tag
-    await ChatHistory.deleteMany({ tagId });
+    // Delete all chat history associated with this tag and user
+    await ChatHistory.deleteMany({
+      tagId,
+      userId: requester.userId, // Filter by user ID
+    });
 
     // Delete the tag itself
     await Tag.findByIdAndDelete(tagId);
