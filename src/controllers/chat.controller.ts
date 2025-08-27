@@ -4,7 +4,6 @@ import { AuthRequest } from "../models/auth.model";
 import { ChatHistory, Tag } from "../models/chat.model";
 import { getEmbedding } from "../utils/embeddings";
 
-// Enhanced similarity calculation with multiple metrics
 function calculateSimilarity(
   a: number[],
   b: number[]
@@ -13,7 +12,6 @@ function calculateSimilarity(
     throw new Error("Vectors must have the same length");
   }
 
-  // Cosine similarity
   let dotProduct = 0;
   let normA = 0;
   let normB = 0;
@@ -32,7 +30,6 @@ function calculateSimilarity(
   normB = Math.sqrt(normB);
   euclideanDistance = Math.sqrt(euclideanDistance);
 
-  // Normalize Euclidean distance to similarity score (0-1)
   const maxPossibleDistance = Math.sqrt(a.length * 4);
   const euclideanSimilarity = 1 - euclideanDistance / maxPossibleDistance;
 
@@ -43,7 +40,7 @@ function calculateSimilarity(
   };
 }
 
-// Enhanced keyword analysis
+
 function analyzeKeywords(
   query: string,
   title: string,
@@ -67,7 +64,7 @@ function analyzeKeywords(
   let partialMatches = 0;
 
   queryWords.forEach((queryWord) => {
-    // Exact matches
+
     if (titleWords.includes(queryWord)) {
       titleMatch += 2;
       exactMatches++;
@@ -77,7 +74,7 @@ function analyzeKeywords(
       exactMatches++;
     }
 
-    // Partial matches
+
     const titlePartial = titleWords.some(
       (word) => word.includes(queryWord) || queryWord.includes(word)
     );
@@ -103,7 +100,7 @@ function analyzeKeywords(
   };
 }
 
-// Clean replies by removing boilerplate and trimming
+
 function cleanReplyText(reply: string): string {
   return reply
     .replace(/^Based on our conversation:/i, "")
@@ -178,10 +175,8 @@ export const chatWithPrompt = async (req: AuthRequest, res: Response) => {
   if (!requester) return res.status(401).json({ error: "Unauthorized" });
 
   try {
-    // Step 1: Embed user query
     const queryVector = await getEmbedding(message);
 
-    // Step 2: Fetch prompts
     const prompts = await Prompt.find({
       embedding: { $exists: true, $ne: [] },
     });
@@ -190,7 +185,6 @@ export const chatWithPrompt = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: "No prompts available" });
     }
 
-    // Step 3: Multi-dimensional scoring
     let scoredPrompts = [];
     for (const p of prompts) {
       if (!p.embedding || p.embedding.length === 0) continue;
@@ -224,16 +218,14 @@ export const chatWithPrompt = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Step 4: Sort and filter
     scoredPrompts.sort((a, b) => b.score - a.score);
     const topCandidates = scoredPrompts.slice(0, 5);
 
-    // Step 5: Contextual memory
     let historyContext: string[] = [];
     let historyRelevance = 0;
 
     if (tagId) {
-      const pastChats = await ChatHistory.find({ tagId })
+      const pastChats = await ChatHistory.find({ tagId, userId: requester.id })
         .sort({ createdAt: -1 })
         .limit(5);
 
@@ -250,7 +242,6 @@ export const chatWithPrompt = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // Step 6: Dynamic confidence threshold
     const bestMatch = topCandidates[0];
     const confidenceThreshold = historyRelevance > 0.7 ? 0.55 : 0.65;
 
@@ -264,12 +255,14 @@ export const chatWithPrompt = async (req: AuthRequest, res: Response) => {
       candidateTitles = topCandidates.slice(0, 3).map((p) => p.prompt.title);
     }
 
-    // Step 7: Tag handling
     let tag;
     if (tagId) {
-      tag = await Tag.findById(tagId);
+      tag = await Tag.findOne({ _id: tagId, userId: requester.id });
       if (!tag) {
-        tag = await Tag.create({ name: message.substring(0, 50) });
+        tag = await Tag.create({
+          name: message.substring(0, 50),
+          userId: requester.id,
+        });
       }
     } else {
       const potentialTagName =
@@ -279,13 +272,16 @@ export const chatWithPrompt = async (req: AuthRequest, res: Response) => {
 
       tag = await Tag.findOne({
         name: { $regex: potentialTagName, $options: "i" },
+        userId: requester.id,
       });
       if (!tag) {
-        tag = await Tag.create({ name: potentialTagName });
+        tag = await Tag.create({
+          name: potentialTagName,
+          userId: requester.id,
+        });
       }
     }
 
-    // Step 8: Context-aware response
     const enhancedReply = await generateContextAwareResponse(
       reply,
       historyContext,
@@ -298,7 +294,6 @@ export const chatWithPrompt = async (req: AuthRequest, res: Response) => {
       reply = enhancedReply;
     }
 
-    // Step 9: Update confidence
     let finalConfidence = bestMatch?.score || 0;
     if (usedHistory && historyRelevance > 0) {
       finalConfidence = calculateConfidenceScore(
@@ -309,7 +304,6 @@ export const chatWithPrompt = async (req: AuthRequest, res: Response) => {
       );
     }
 
-    // Step 10: Save chat history
     await ChatHistory.create({
       userId: requester.id,
       message,
@@ -325,7 +319,6 @@ export const chatWithPrompt = async (req: AuthRequest, res: Response) => {
       },
     });
 
-    // Step 11: Final response
     res.json({
       message,
       reply: enhancedReply,
@@ -333,7 +326,7 @@ export const chatWithPrompt = async (req: AuthRequest, res: Response) => {
       tag: { id: tag._id, name: tag.name },
       confidence: finalConfidence,
       metrics: {
-        semantic: bestMatch?.metrics.semantic, // Fixed typo here
+        semantic: bestMatch?.metrics.semantic,
         keyword: bestMatch?.metrics.keyword,
         exactKeywords: bestMatch?.metrics.exactKeywords,
         partialKeywords: bestMatch?.metrics.partialKeywords,
@@ -355,9 +348,7 @@ export const listTags = async (req: AuthRequest, res: Response) => {
   const requester = req.user;
   if (!requester) return res.status(401).json({ error: "Unauthorized" });
 
-  const tags = await Tag.find({ userId: requester.userId }).sort({
-    createdAt: -1,
-  }); // Filter by user ID
+  const tags = await Tag.find({ userId: requester.id }).sort({ createdAt: -1 });
   res.json(tags);
 };
 
@@ -367,10 +358,7 @@ export const getChatHistoryByTag = async (req: AuthRequest, res: Response) => {
 
   if (!requester) return res.status(401).json({ error: "Unauthorized" });
 
-  const history = await ChatHistory.find({
-    tagId,
-    userId: requester.userId, // Filter by user ID
-  });
+  const history = await ChatHistory.find({ tagId, userId: requester.id });
   res.json(history);
 };
 
@@ -384,25 +372,12 @@ export const deleteChatHistoryByTag = async (
   if (!requester) return res.status(401).json({ error: "Unauthorized" });
 
   try {
-    // First check if tag exists and belongs to user
-    const tag = await Tag.findOne({
-      _id: tagId,
-      userId: requester.userId, // Filter by user ID
-    });
-
+    const tag = await Tag.findById(tagId);
     if (!tag) {
       return res.status(404).json({ error: "Tag not found" });
     }
-
-    // Delete all chat history associated with this tag and user
-    await ChatHistory.deleteMany({
-      tagId,
-      userId: requester.userId, // Filter by user ID
-    });
-
-    // Delete the tag itself
+    await ChatHistory.deleteMany({ tagId });
     await Tag.findByIdAndDelete(tagId);
-
     res.json({
       message: "Tag and associated chat history deleted successfully",
       deletedTag: { id: tag._id, name: tag.name },

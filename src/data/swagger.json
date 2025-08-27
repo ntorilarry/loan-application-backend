@@ -347,7 +347,7 @@
     "/chat": {
       "post": {
         "summary": "Chat with custom prompts",
-        "description": "Send a message. System responds with closest stored prompt. Associates with an existing tag or creates one. Returns detailed confidence metrics and context information.",
+        "description": "Send a message. System responds with closest stored prompt. Associates with an existing tag or creates one.",
         "security": [{ "bearerAuth": [] }],
         "requestBody": {
           "required": true,
@@ -356,14 +356,10 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "message": { 
-                    "type": "string", 
-                    "example": "How are you?",
-                    "description": "User message to process"
-                  },
+                  "message": { "type": "string", "example": "How are you?" },
                   "tagId": {
                     "type": "string",
-                    "description": "Optional existing tag ID for conversation continuity"
+                    "description": "Optional existing tag ID"
                   }
                 },
                 "required": ["message"]
@@ -373,105 +369,36 @@
         },
         "responses": {
           "200": {
-            "description": "Response with matched prompt and detailed metrics",
+            "description": "Response with matched prompt",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "message": { 
-                      "type": "string",
-                      "description": "Original user message"
-                    },
-                    "reply": { 
-                      "type": "string",
-                      "description": "AI response based on closest matching prompt"
-                    },
+                    "message": { "type": "string" },
+                    "reply": { "type": "string" },
                     "prompts": {
                       "type": "array",
-                      "items": { "type": "string" },
-                      "description": "Titles of top matching prompts considered"
+                      "items": { "type": "string" }
                     },
-                    "tag": { 
-                      "$ref": "#/components/schemas/Tag",
-                      "description": "Associated tag for this conversation"
-                    },
-                    "confidence": {
-                      "type": "number",
-                      "format": "float",
-                      "description": "Overall confidence score (0-1)"
-                    },
-                    "metrics": {
-                      "type": "object",
-                      "properties": {
-                        "semantic": {
-                          "type": "number",
-                          "format": "float",
-                          "description": "Semantic similarity score"
-                        },
-                        "keyword": {
-                          "type": "number",
-                          "format": "float",
-                          "description": "Keyword matching score"
-                        },
-                        "exactKeywords": {
-                          "type": "integer",
-                          "description": "Number of exact keyword matches"
-                        },
-                        "partialKeywords": {
-                          "type": "integer",
-                          "description": "Number of partial keyword matches"
-                        },
-                        "historyRelevance": {
-                          "type": "number",
-                          "format": "float",
-                          "description": "Relevance to conversation history"
-                        }
-                      }
-                    },
-                    "historyUsed": {
-                      "type": "boolean",
-                      "description": "Whether conversation history was utilized"
-                    },
-                    "context": {
-                      "type": "array",
-                      "items": { "type": "string" },
-                      "description": "Recent conversation context used"
-                    }
+                    "tag": { "$ref": "#/components/schemas/Tag" }
                   }
-                },
-                "example": {
-                  "message": "How are you?",
-                  "reply": "I'm doing well, thank you for asking!",
-                  "prompts": ["Greeting Response", "General Conversation"],
-                  "tag": { "id": "67a1b2c3d4e5f67890123456", "name": "greeting" },
-                  "confidence": 0.87,
-                  "metrics": {
-                    "semantic": 0.92,
-                    "keyword": 0.85,
-                    "exactKeywords": 3,
-                    "partialKeywords": 1,
-                    "historyRelevance": 0.45
-                  },
-                  "historyUsed": true,
-                  "context": ["Hello → Hi there!", "How are you → I'm doing well"]
                 }
               }
             }
           },
           "401": { "description": "Unauthorized" },
-          "404": { "description": "No prompts available" },
           "500": { "description": "Server error" }
         }
       }
     },
     "/chat/tags": {
       "get": {
-        "summary": "List all tags for authenticated user",
+        "summary": "List all tags",
         "security": [{ "bearerAuth": [] }],
         "responses": {
           "200": {
-            "description": "List of user's tags",
+            "description": "List of tags",
             "content": {
               "application/json": {
                 "schema": {
@@ -480,14 +407,13 @@
                 }
               }
             }
-          },
-          "401": { "description": "Unauthorized" }
+          }
         }
       }
     },
     "/chat/chat-history/{tagId}": {
       "get": {
-        "summary": "Get chat history by tag ID for authenticated user",
+        "summary": "Get chat history by tag ID",
         "security": [{ "bearerAuth": [] }],
         "parameters": [
           {
@@ -499,7 +425,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Chat history for the specified tag belonging to the user",
+            "description": "Chat history for tag",
             "content": {
               "application/json": {
                 "schema": {
@@ -509,8 +435,7 @@
               }
             }
           },
-          "401": { "description": "Unauthorized" },
-          "404": { "description": "Tag not found or not owned by user" }
+          "401": { "description": "Unauthorized" }
         }
       },
       "delete": {
@@ -527,30 +452,21 @@
         ],
         "responses": {
           "200": {
-            "description": "Successfully deleted tag and associated chat history",
+            "description": "Successfully deleted chat history",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "message": { 
-                      "type": "string",
-                      "example": "Tag and associated chat history deleted successfully"
-                    },
-                    "deletedTag": {
-                      "type": "object",
-                      "properties": {
-                        "id": { "type": "string" },
-                        "name": { "type": "string" }
-                      }
-                    }
+                    "success": { "type": "boolean", "example": true },
+                    "deletedCount": { "type": "integer", "example": 5 }
                   }
                 }
               }
             }
           },
           "401": { "description": "Unauthorized" },
-          "404": { "description": "Tag not found or not owned by user" },
+          "404": { "description": "Tag not found" },
           "500": { "description": "Server error" }
         }
       }
@@ -587,10 +503,6 @@
         "properties": {
           "id": { "type": "string" },
           "name": { "type": "string" },
-          "userId": { 
-            "type": "string",
-            "description": "User ID who owns this tag" 
-          },
           "createdAt": { "type": "string", "format": "date-time" }
         }
       },
@@ -601,22 +513,8 @@
           "userId": { "type": "string" },
           "message": { "type": "string" },
           "reply": { "type": "string" },
-          "prompts": { 
-            "type": "array", 
-            "items": { "type": "string" },
-            "description": "Titles of prompts considered for this response"
-          },
+          "prompts": { "type": "array", "items": { "type": "string" } },
           "tagId": { "type": "string" },
-          "metadata": {
-            "type": "object",
-            "properties": {
-              "confidence": { "type": "number" },
-              "semanticScore": { "type": "number" },
-              "keywordScore": { "type": "number" },
-              "historyUsed": { "type": "boolean" },
-              "historyRelevance": { "type": "number" }
-            }
-          },
           "createdAt": { "type": "string", "format": "date-time" }
         }
       }
