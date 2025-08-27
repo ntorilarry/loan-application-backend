@@ -344,11 +344,20 @@
         }
       }
     },
-    "/chat": {
+    "/chat/{userId}": {
       "post": {
         "summary": "Chat with custom prompts",
-        "description": "Send a message. System responds with closest stored prompt. Associates with an existing tag or creates one (scoped per user).",
+        "description": "Send a message. System responds with closest stored prompt. Associates with an existing tag or creates one for the specified user.",
         "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "ID of the user to associate the chat with"
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -381,7 +390,23 @@
                       "type": "array",
                       "items": { "type": "string" }
                     },
-                    "tag": { "$ref": "#/components/schemas/Tag" }
+                    "tag": { "$ref": "#/components/schemas/Tag" },
+                    "confidence": { "type": "number" },
+                    "metrics": {
+                      "type": "object",
+                      "properties": {
+                        "semantic": { "type": "number" },
+                        "keyword": { "type": "number" },
+                        "exactKeywords": { "type": "number" },
+                        "partialKeywords": { "type": "number" },
+                        "historyRelevance": { "type": "number" }
+                      }
+                    },
+                    "historyUsed": { "type": "boolean" },
+                    "context": {
+                      "type": "array",
+                      "items": { "type": "string" }
+                    }
                   }
                 }
               }
@@ -392,13 +417,22 @@
         }
       }
     },
-    "/chat/tags": {
+    "/chat/tags/{userId}": {
       "get": {
-        "summary": "List all tags for the authenticated user",
+        "summary": "List all tags for the specified user",
         "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "ID of the user to get tags for"
+          }
+        ],
         "responses": {
           "200": {
-            "description": "List of tags (scoped to userId)",
+            "description": "List of tags for the specified user",
             "content": {
               "application/json": {
                 "schema": {
@@ -412,16 +446,24 @@
         }
       }
     },
-    "/chat/chat-history/{tagId}": {
+    "/chat/chat-history/{userId}/{tagId}": {
       "get": {
-        "summary": "Get chat history by tag ID (user scoped)",
+        "summary": "Get chat history by tag ID for the specified user",
         "security": [{ "bearerAuth": [] }],
         "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "ID of the user who owns the chat history"
+          },
           {
             "name": "tagId",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": { "type": "string" },
+            "description": "ID of the tag to get chat history for"
           }
         ],
         "responses": {
@@ -440,15 +482,23 @@
         }
       },
       "delete": {
-        "summary": "Delete chat history by tag ID",
-        "description": "Deletes all chat messages for the given tag belonging to the authenticated user.",
+        "summary": "Delete chat history by tag ID for the specified user",
+        "description": "Deletes all chat messages for the given tag belonging to the specified user.",
         "security": [{ "bearerAuth": [] }],
         "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "ID of the user who owns the chat history"
+          },
           {
             "name": "tagId",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": { "type": "string" },
+            "description": "ID of the tag to delete chat history for"
           }
         ],
         "responses": {
@@ -459,8 +509,14 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "success": { "type": "boolean", "example": true },
-                    "deletedCount": { "type": "integer", "example": 5 }
+                    "message": { "type": "string" },
+                    "deletedTag": {
+                      "type": "object",
+                      "properties": {
+                        "id": { "type": "string" },
+                        "name": { "type": "string" }
+                      }
+                    }
                   }
                 }
               }
@@ -520,6 +576,16 @@
           "reply": { "type": "string" },
           "prompts": { "type": "array", "items": { "type": "string" } },
           "tagId": { "type": "string" },
+          "metadata": {
+            "type": "object",
+            "properties": {
+              "confidence": { "type": "number" },
+              "semanticScore": { "type": "number" },
+              "keywordScore": { "type": "number" },
+              "historyUsed": { "type": "boolean" },
+              "historyRelevance": { "type": "number" }
+            }
+          },
           "createdAt": { "type": "string", "format": "date-time" }
         }
       }
