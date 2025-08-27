@@ -319,7 +319,7 @@ export const chatWithPrompt = async (req: AuthRequest, res: Response) => {
       message,
       reply: enhancedReply,
       prompts: candidateTitles,
-      tag: { id: tag._id, name: tag.name },
+      tag: { id: tag._id, name: tag.name, userId: tag.userId },
       confidence: finalConfidence,
       metrics: {
         semantic: bestMatch?.metrics.semantic,

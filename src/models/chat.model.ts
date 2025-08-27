@@ -2,12 +2,14 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface ITag extends Document {
   name: string;
+  userId: string;
   createdAt: Date;
 }
 
 const TagSchema: Schema = new Schema(
   {
     name: { type: String, required: true },
+    userId: { type: String, required: true },
   },
   { timestamps: true }
 );
