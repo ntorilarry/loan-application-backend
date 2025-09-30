@@ -1,34 +1,47 @@
-import mongoose, { Schema, Document } from "mongoose";
-
-export interface IUser extends Document {
-  _id: mongoose.Types.ObjectId;
-  name: string;
-  email: string;
-  password: string;
-  confirmPassword?: string;
-  role: "user" | "admin";
-  createdAt: Date;
-  updatedAt: Date | null;
-  isVerified: boolean;
-  verificationToken?: string;
-  resetPasswordToken?: string;
-  resetPasswordExpires?: Date;
+export interface User {
+  id: number
+  fullname: string
+  email: string
+  phone: string
+  company_name?: string
+  company_address?: string
+  password_hash: string
+  is_email_verified: boolean
+  email_verification_token?: string
+  reset_password_token?: string
+  reset_password_expires?: Date
+  role_id: number
+  created_at: Date
+  updated_at: Date
 }
 
-const UserSchema = new Schema<IUser>(
-  {
-    name: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
-    role: { type: String, default: "user" },
-    createdAt: { type: Date, default: Date.now },
-    updatedAt: { type: Date, default: null },
-    isVerified: { type: Boolean, default: false },
-    verificationToken: { type: String },
-    resetPasswordToken: { type: String },
-    resetPasswordExpires: { type: Date },
-  },
-  { timestamps: true }
-);
+export interface CreateUserRequest {
+  fullname: string
+  email: string
+  phone: string
+  company_name?: string
+  company_address?: string
+  password: string
+  role_id?: number
+}
 
-export default mongoose.model<IUser>("User", UserSchema);
+export interface LoginRequest {
+  email: string
+  password: string
+}
+
+export interface ForgotPasswordRequest {
+  email: string
+}
+
+export interface ResetPasswordRequest {
+  token: string
+  password: string
+}
+
+export interface AuthResponse {
+  user: Omit<User, "password_hash">
+  access_token: string
+  refresh_token: string | null
+  refresh_token_expires: Date | null
+}

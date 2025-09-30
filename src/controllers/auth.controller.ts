@@ -1,239 +1,289 @@
-import { Request, Response } from "express";
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-import User from "../models/user.model";
-import crypto from "crypto";
-import { sendEmail } from "../utils/sendEmail";
+import type { Request, Response } from "express";
+import AuthService from "../services/auth.service";
+import pool from "../database/connection";
+import type {
+  CreateUserRequest,
+  LoginRequest,
+  ForgotPasswordRequest,
+  ResetPasswordRequest,
+} from "../models/user.model";
+import type { AuthenticatedRequest } from "../common/types";
+import { logSystemActivity } from "../middlewares/logger.middleware";
 
-const JWT_SECRET = process.env.JWT_SECRET || "changeme";
-const JWT_REFRESH_SECRET =
-  process.env.JWT_REFRESH_SECRET || "refresh-secret-change-me";
+class AuthController {
+  async register(req: Request, res: Response) {
+    try {
+      const userData: CreateUserRequest = req.body;
+      const result = await AuthService.register(userData);
 
-// Store refresh tokens (in production, use Redis or database)
-let refreshTokens: string[] = [];
+      await logSystemActivity(
+        result.user.id,
+        "User registered",
+        "User",
+        result.user.id,
+        { email: result.user.email },
+        req
+      );
 
-export const signup = async (req: Request, res: Response) => {
-  try {
-    const { email, password, confirmPassword, name } = req.body;
-
-    if (!email || !password || !confirmPassword || !name) {
-      return res.status(400).json({
-        error: "Email, password, confirmPassword, and name are required",
+      res.status(201).json({
+        success: true,
+        message:
+          "User registered successfully. Please check your email for verification.",
+        data: {
+          user: result.user,
+          access_token: result.access_token,
+          refresh_token: result.refresh_token,
+          refresh_token_expires: result.refresh_token_expires,
+        },
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        message: error instanceof Error ? error.message : "Registration failed",
       });
     }
-
-    if (password !== confirmPassword) {
-      return res.status(400).json({ error: "Passwords do not match" });
-    }
-
-    const existingUser = await User.findOne({ email });
-    if (existingUser)
-      return res.status(400).json({ error: "Email already in use" });
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const verificationToken = crypto.randomBytes(32).toString("hex");
-
-    const user = await User.create({
-      email,
-      name,
-      password: hashedPassword,
-      role: "user",
-      verificationToken,
-    });
-
-    const verifyLink = `${process.env.CLIENT_URL}/auth/email-verified?token=${verificationToken}`;
-    await sendEmail(
-      user.email,
-      "Verify your email",
-      `<p>Hello ${user.name},</p>
-       <p>Please verify your email by clicking below:</p>
-       <a href="${verifyLink}">Verify Email</a>`
-    );
-
-    res.status(201).json({
-      message:
-        "Signup successful, please check your email to verify your account",
-    });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
   }
-};
 
-export const login = async (req: Request, res: Response) => {
-  try {
-    const { email, password } = req.body;
+  async login(req: Request, res: Response) {
+    try {
+      const loginData: LoginRequest = req.body;
+      const result = await AuthService.login(loginData);
 
-    if (!email || !password)
-      return res.status(400).json({ error: "Email and password are required" });
+      await logSystemActivity(
+        result.user.id,
+        "User logged in",
+        "User",
+        result.user.id,
+        { email: result.user.email },
+        req
+      );
 
-    const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ error: "Invalid credentials" });
-
-    if (!user.isVerified) {
-      return res.status(400).json({ error: "Please verify your email first" });
+      res.json({
+        success: true,
+        message: "Login successful",
+        data: {
+          user: result.user,
+          access_token: result.access_token,
+          refresh_token: result.refresh_token,
+          refresh_token_expires: result.refresh_token_expires,
+        },
+      });
+    } catch (error) {
+      res.status(401).json({
+        success: false,
+        message: error instanceof Error ? error.message : "Login failed",
+      });
     }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ error: "Invalid credentials" });
-
-    const accessTokenExpiresIn = 1000 * 60 * 1000; // 1000 minutes in ms
-    const accessToken = jwt.sign(
-      { id: user._id, role: user.role },
-      JWT_SECRET,
-      { expiresIn: "1000m" }
-    );
-
-    const refreshToken = jwt.sign({ id: user._id }, JWT_REFRESH_SECRET, {
-      expiresIn: "7d",
-    });
-
-    refreshTokens.push(refreshToken);
-
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
-
-    res.json({
-      message: "Login successful",
-      accessToken,
-      expiresAt: new Date(Date.now() + accessTokenExpiresIn).toISOString(),
-      refreshToken,
-      user: {
-        id: user._id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-      },
-    });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
   }
-};
 
+  async forgotPassword(req: Request, res: Response) {
+    try {
+      const forgotPasswordData: ForgotPasswordRequest = req.body;
+      await AuthService.forgotPassword(forgotPasswordData);
 
-export const refreshToken = async (req: Request, res: Response) => {
-  try {
-    const tokenFromCookie = req.cookies.refreshToken;
-    const tokenFromBody = req.body.refreshToken;
-    const refreshToken = tokenFromCookie || tokenFromBody;
+      await logSystemActivity(
+        undefined,
+        "Password reset requested",
+        "User",
+        undefined,
+        { email: forgotPasswordData.email },
+        req
+      );
 
-    if (!refreshToken) {
-      return res.status(401).json({ error: "Refresh token required" });
+      res.json({
+        success: true,
+        message:
+          "If an account with that email exists, a password reset link has been sent.",
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: "Failed to process password reset request",
+      });
     }
+  }
 
-    if (!refreshTokens.includes(refreshToken)) {
-      return res.status(403).json({ error: "Invalid refresh token" });
+  async resetPassword(req: Request, res: Response) {
+    try {
+      const resetData: ResetPasswordRequest = req.body;
+      await AuthService.resetPassword(resetData);
+
+      await logSystemActivity(
+        undefined,
+        "Password reset completed",
+        "User",
+        undefined,
+        { token: resetData.token },
+        req
+      );
+
+      res.json({
+        success: true,
+        message: "Password reset successful",
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        message:
+          error instanceof Error ? error.message : "Password reset failed",
+      });
     }
+  }
 
-    const decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET) as any;
+  async verifyEmail(req: Request, res: Response) {
+    try {
+      const { token } = req.query;
 
-    const user = await User.findById(decoded.id);
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
+      if (!token || typeof token !== "string") {
+        return res.status(400).json({
+          success: false,
+          message: "Verification token is required",
+        });
+      }
+
+      await AuthService.verifyEmail(token);
+
+      await logSystemActivity(
+        undefined,
+        "Email verified",
+        "User",
+        undefined,
+        { token },
+        req
+      );
+
+      res.json({
+        success: true,
+        message: "Email verified successfully",
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        message:
+          error instanceof Error ? error.message : "Email verification failed",
+      });
     }
+  }
 
-    const newAccessToken = jwt.sign(
-      { id: user._id, role: user.role },
-      JWT_SECRET,
-      { expiresIn: "1000m" }
-    );
+  async getProfile(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message: "User not authenticated",
+        });
+      }
 
-    res.json({ accessToken: newAccessToken });
-  } catch (error: any) {
-    if (error.name === "JsonWebTokenError") {
-      return res.status(403).json({ error: "Invalid refresh token" });
+      const userWithPermissions = await AuthService.getUserWithPermissions(
+        req.user.id
+      );
+
+      res.json({
+        success: true,
+        message: "Profile retrieved successfully",
+        data: {
+          user: req.user,
+          role: userWithPermissions,
+        },
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: "Failed to retrieve profile",
+      });
     }
-    if (error.name === "TokenExpiredError") {
-      return res.status(403).json({ error: "Refresh token expired" });
+  }
+
+  async logout(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (req.user) {
+        await logSystemActivity(
+          req.user.id,
+          "User logged out",
+          "User",
+          req.user.id,
+          { email: req.user.email },
+          req
+        );
+      }
+
+      res.json({
+        success: true,
+        message: "Logout successful",
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: "Logout failed",
+      });
     }
-    res.status(500).json({ error: error.message });
   }
-};
 
+  async refreshToken(req: Request, res: Response) {
+    try {
+      const { refresh_token } = req.body;
 
-export const logout = async (req: Request, res: Response) => {
-  try {
-    const refreshToken = req.cookies.refreshToken;
-    refreshTokens = refreshTokens.filter((token) => token !== refreshToken);
+      if (!refresh_token) {
+        return res.status(400).json({
+          success: false,
+          message: "Refresh token is required",
+        });
+      }
 
-    res.clearCookie("refreshToken", {
-      httpOnly: true,
-      sameSite: "strict",
-    });
+      // Verify the refresh token and get user
+      const result = await pool.query(
+        `SELECT id, fullname, email, phone, company_name, company_address,
+                is_email_verified, email_verification_token, reset_password_token,
+                reset_password_expires, tenant_schema, role_id, created_at, updated_at
+         FROM users WHERE reset_password_token = $1 AND reset_password_expires > NOW()`,
+        [refresh_token]
+      );
 
-    res.json({ message: "Logout successful" });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
+      if (result.rows.length === 0) {
+        return res.status(401).json({
+          success: false,
+          message: "Invalid or expired refresh token",
+        });
+      }
+
+      const user = result.rows[0];
+
+      // Generate new JWT token
+      const newAccessToken = AuthService.generateToken(
+        user.id,
+        user.email,
+        user.role_id
+      );
+
+      await logSystemActivity(
+        user.id,
+        "Token refreshed using refresh token",
+        "User",
+        user.id,
+        { email: user.email },
+        req
+      );
+
+      // Remove password hash from response (not included in query)
+      const { password_hash, ...userWithoutPassword } = user;
+
+      res.json({
+        success: true,
+        message: "Token refreshed successfully",
+        data: {
+          user: userWithoutPassword,
+          access_token: newAccessToken,
+          refresh_token: user.reset_password_token,
+          refresh_token_expires: user.reset_password_expires,
+        },
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: "Token refresh failed",
+      });
+    }
   }
-};
+}
 
-export const verifyEmail = async (req: Request, res: Response) => {
-  try {
-    const { token } = req.query;
-
-    if (!token) return res.status(400).json({ error: "Invalid token" });
-
-    const user = await User.findOne({ verificationToken: token });
-    if (!user)
-      return res.status(400).json({ error: "Invalid or expired token" });
-
-    user.isVerified = true;
-    user.verificationToken = undefined;
-    await user.save();
-
-    res.json({ message: "Email verified successfully, you can now login" });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-export const forgotPassword = async (req: Request, res: Response) => {
-  try {
-    const { email } = req.body;
-    const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ error: "User not found" });
-
-    const resetToken = crypto.randomBytes(32).toString("hex");
-    user.resetPasswordToken = resetToken;
-    user.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000);
-    await user.save();
-
-    const resetLink = `${process.env.CLIENT_URL}/auth/reset-password?token=${resetToken}`;
-    await sendEmail(
-      user.email,
-      "Password Reset Request",
-      `<p>Hello ${user.name},</p>
-       <p>Click below to reset your password:</p>
-       <a href="${resetLink}">Reset Password</a>`
-    );
-
-    res.json({ message: "Password reset email sent" });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-export const resetPassword = async (req: Request, res: Response) => {
-  try {
-    const { token, newPassword } = req.body;
-
-    const user = await User.findOne({
-      resetPasswordToken: token,
-      resetPasswordExpires: { $gt: new Date() },
-    });
-
-    if (!user)
-      return res.status(400).json({ error: "Invalid or expired token" });
-
-    user.password = await bcrypt.hash(newPassword, 10);
-    user.resetPasswordToken = undefined;
-    user.resetPasswordExpires = undefined;
-    await user.save();
-
-    res.json({ message: "Password reset successful" });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-};
+export default new AuthController();
