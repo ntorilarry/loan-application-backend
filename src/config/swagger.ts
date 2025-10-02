@@ -12,7 +12,7 @@ const options = {
         "A comprehensive loan management system with multi-phase workflow, role-based access control, and automated notifications.",
       contact: {
         name: "API Support",
-        email: "support@loan.com",
+        email: "lntori99@gmail.com",
       },
       license: {
         name: "MIT",
@@ -23,7 +23,7 @@ const options = {
       {
         url:
           process.env.NODE_ENV === "production"
-            ? "https://your-production-domain.com"
+            ? "https://loan-application-backend-1-qz2o.onrender.com"
             : `http://localhost:${process.env.PORT || 3000}`,
         description: process.env.NODE_ENV === "production" ? "Production server" : "Development server",
       },
