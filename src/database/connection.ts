@@ -3,38 +3,53 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-// Validate required environment variables to avoid cryptic driver errors
-const requiredEnvVars = [
-  "DB_HOST",
-  "DB_PORT",
-  "DB_USERNAME",
-  "DB_PASSWORD",
-  "DB_NAME",
-] as const;
+// Function to create database configuration
+function createDatabaseConfig() {
+  // Check if DATABASE_URL is provided (production environment)
+  if (process.env.DATABASE_URL) {
+    return {
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+      max: 20,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 2000,
+    };
+  }
 
-const missingEnvVars = requiredEnvVars.filter((key) => !process.env[key]);
+  // Use individual environment variables (local development)
+  const requiredEnvVars = [
+    "DB_HOST",
+    "DB_PORT", 
+    "DB_USERNAME",
+    "DB_PASSWORD",
+    "DB_NAME",
+  ] as const;
 
-if (missingEnvVars.length > 0) {
-  const message = `Missing required environment variables: ${missingEnvVars.join(", ")}. Please set them in your .env file.`;
-  // Throwing early results in a clear startup error instead of SASL errors later
-  throw new Error(message);
+  const missingEnvVars = requiredEnvVars.filter((key) => !process.env[key]);
+
+  if (missingEnvVars.length > 0) {
+    const message = `Missing required environment variables: ${missingEnvVars.join(", ")}. Please set them in your .env file or provide DATABASE_URL for production.`;
+    throw new Error(message);
+  }
+
+  const dbPasswordEnv = process.env.DB_PASSWORD as string;
+
+  if (typeof dbPasswordEnv !== "string") {
+    throw new Error("DB_PASSWORD must be a string");
+  }
+
+  return {
+    host: process.env.DB_HOST,
+    port: Number.parseInt(process.env.DB_PORT || "5432"),
+    user: process.env.DB_USERNAME,
+    password: String(dbPasswordEnv),
+    database: process.env.DB_NAME,
+    max: 20,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000,
+  };
 }
 
-const dbPasswordEnv = process.env.DB_PASSWORD as string;
-
-if (typeof dbPasswordEnv !== "string") {
-  throw new Error("DB_PASSWORD must be a string");
-}
-
-const pool = new Pool({
-  host: process.env.DB_HOST,
-  port: Number.parseInt(process.env.DB_PORT || "5432"),
-  user: process.env.DB_USERNAME,
-  password: String(dbPasswordEnv),
-  database: process.env.DB_NAME,
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-});
+const pool = new Pool(createDatabaseConfig());
 
 export default pool;
