@@ -87,11 +87,11 @@ SMTP_PASS=your_app_password
 SMTP_FROM=noreply@loan.com
 
 # Frontend URL (for email links)
-FRONTEND_URL=http://localhost:3000
+FRONTEND_URL=https://loan-application-frontend.netlify.app
 
 # App
 PORT=3000
-NODE_ENV=development
+NODE_ENV=production
 \`\`\`
 
 ### 4. Database Setup
