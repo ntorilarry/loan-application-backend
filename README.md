@@ -110,14 +110,14 @@ This will:
 npm run dev
 \`\`\`
 
-The API will be available at `http://localhost:3000`
+The API will be available at `https://loan-application-backend-1-qz2o.onrender.com`
 
 ## 📚 API Documentation
 
 Once the server is running, visit:
-- **Swagger UI**: `http://localhost:3000/api-docs`
-- **OpenAPI JSON**: `http://localhost:3000/api-docs.json`
-- **Health Check**: `http://localhost:3000/health`
+- **Swagger UI**: `https://loan-application-backend-1-qz2o.onrender.com/api-docs`
+- **OpenAPI JSON**: `https://loan-application-backend-1-qz2o.onrender.com/api-docs.json`
+- **Health Check**: `https://loan-application-backend-1-qz2o.onrender.com/health`
 
 ## 👥 Default User Accounts
 
