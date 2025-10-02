@@ -19,7 +19,7 @@ function createDatabaseConfig() {
   // Use individual environment variables (local development)
   const requiredEnvVars = [
     "DB_HOST",
-    "DB_PORT", 
+    "DB_PORT",
     "DB_USERNAME",
     "DB_PASSWORD",
     "DB_NAME",

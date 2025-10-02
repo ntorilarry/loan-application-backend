@@ -1,9 +1,14 @@
 {
   "scripts": {
     "dev": "nodemon --exec ts-node src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
     "migrate": "ts-node src/database/migrate.ts",
+    "migrate:prod": "node dist/database/migrate.js",
     "seed": "ts-node src/scripts/seed-database.ts",
-    "setup": "ts-node src/scripts/setup.ts"
+    "seed:prod": "node dist/scripts/seed-database.js",
+    "setup": "ts-node src/scripts/setup.ts",
+    "setup:prod": "node dist/scripts/setup.js"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
