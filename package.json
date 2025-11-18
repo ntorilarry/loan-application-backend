@@ -26,11 +26,9 @@
     "typescript": "^5.9.2"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.896.0",
     "@aws-sdk/client-ses": "^3.894.0",
     "@types/cors": "^2.8.19",
     "@types/multer": "^2.0.0",
-    "aws-sdk": "^2.1692.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.2",
     "cookie-parser": "^1.4.7",

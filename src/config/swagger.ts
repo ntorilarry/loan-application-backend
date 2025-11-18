@@ -21,10 +21,7 @@ const options = {
     },
     servers: [
       {
-        url:
-          process.env.NODE_ENV === "production"
-            ? "https://loan-application-backend-1-qz2o.onrender.com"
-            : `http://localhost:${process.env.PORT || 3000}`,
+        url: process.env.BACKEND_URL || "http://localhost:5000",
         description: process.env.NODE_ENV === "production" ? "Production server" : "Development server",
       },
     ],

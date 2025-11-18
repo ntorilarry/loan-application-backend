@@ -37,7 +37,6 @@ class ImageController {
         message: 'Image uploaded successfully',
         data: {
           imageUrl,
-          uploadMode: ImageService.getUploadMode(),
         },
       });
     } catch (error) {
@@ -67,7 +66,6 @@ class ImageController {
         message: 'Images uploaded successfully',
         data: {
           imageUrls,
-          uploadMode: ImageService.getUploadMode(),
         },
       });
     } catch (error) {
@@ -96,7 +94,6 @@ class ImageController {
         message: 'Loan images uploaded successfully',
         data: {
           images: uploadedImages,
-          uploadMode: ImageService.getUploadMode(),
         },
       });
     } catch (error) {

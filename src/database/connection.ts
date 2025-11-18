@@ -5,18 +5,21 @@ dotenv.config();
 
 // Function to create database configuration
 function createDatabaseConfig() {
-  // Check if DATABASE_URL is provided (production environment)
-  if (process.env.DATABASE_URL) {
+  // Production environment: use DATABASE_URL
+  if (process.env.NODE_ENV === 'production') {
+    if (!process.env.DATABASE_URL) {
+      throw new Error('DATABASE_URL is required when NODE_ENV=production');
+    }
     return {
       connectionString: process.env.DATABASE_URL,
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+      ssl: { rejectUnauthorized: false },
       max: 20,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 2000,
     };
   }
 
-  // Use individual environment variables (local development)
+  // Local development: use individual environment variables
   const requiredEnvVars = [
     "DB_HOST",
     "DB_PORT",
@@ -28,7 +31,7 @@ function createDatabaseConfig() {
   const missingEnvVars = requiredEnvVars.filter((key) => !process.env[key]);
 
   if (missingEnvVars.length > 0) {
-    const message = `Missing required environment variables: ${missingEnvVars.join(", ")}. Please set them in your .env file or provide DATABASE_URL for production.`;
+    const message = `Missing required environment variables: ${missingEnvVars.join(", ")}. Please set them in your .env file.`;
     throw new Error(message);
   }
 

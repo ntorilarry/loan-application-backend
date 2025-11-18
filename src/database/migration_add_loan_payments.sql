@@ -17,3 +17,4 @@ ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'pending';
 UPDATE loan_repayments SET status = 'pending' WHERE status IS NULL;
 
 
+

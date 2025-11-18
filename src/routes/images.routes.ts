@@ -38,7 +38,6 @@ const router = Router();
  *                   type: object
  *                   properties:
  *                     imageUrl: { type: string }
- *                     uploadMode: { type: string }
  */
 router.post(
   '/upload',
@@ -82,7 +81,6 @@ router.post(
  *                   type: object
  *                   properties:
  *                     imageUrls: { type: array, items: { type: string } }
- *                     uploadMode: { type: string }
  */
 router.post(
   '/upload-multiple',
@@ -135,7 +133,6 @@ router.post(
  *                         id_front_image: { type: string }
  *                         id_back_image: { type: string }
  *                         profile_image: { type: string }
- *                     uploadMode: { type: string }
  */
 router.post(
   '/upload-loan-images',
