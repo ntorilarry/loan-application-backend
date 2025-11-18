@@ -19,7 +19,7 @@ COPY .env .env
 # Build the NestJS application
 RUN npm run build
 
-# Expose port 5000 (default port for NestJS)
+# Expose port 5000 (default port for NodeJS)
 EXPOSE 5000
 
 # Start the NestJS application
